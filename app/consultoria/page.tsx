@@ -66,12 +66,13 @@ export default function ConsultoriaPage() {
     const cid = av.consultoria_id  // ← usa variável local, não o state
 
     // Empresas
-    const { data: emps } = await supabase
+    const { data: emps, error: empsError } = await supabase
       .from('empresas_clientes')
-      .select('*, avaliador:avaliadores(full_name)')
+      .select('id, name, cnpj, cidade, uf, email, phone, grau_risco, active, avaliador_responsavel')
       .eq('consultoria_id', cid)
       .order('created_at', { ascending: false })
       .limit(5)
+    console.log('EMPRESAS:', emps, 'ERRO:', empsError)
     setEmpresas(emps || [])
 
     // Stats
