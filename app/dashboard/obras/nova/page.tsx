@@ -121,7 +121,6 @@ export default function NovaVistoriaPage() {
           name: novaObraNome,
           consultoria_id: consultoriaId,
           empresa_cliente_id: selectedEmpresa.id,
-          organization_id: consultoriaId,
           avaliador_id: avaliadorId,
           status: 'ativa',
           empresa_nome: selectedEmpresa.name,
@@ -150,7 +149,6 @@ export default function NovaVistoriaPage() {
         .from('vistorias')
         .insert({
           obra_id: selectedObra.id,
-          organization_id: consultoriaId,
           consultoria_id: consultoriaId,
           avaliador_id: avaliadorId,
           numero: dados.numero,
