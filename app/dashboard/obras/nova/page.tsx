@@ -39,6 +39,7 @@ export default function NovaVistoriaPage() {
   const [search, setSearch] = useState('')
   const [criandoObra, setCriandoObra] = useState(false)
   const [novaObraNome, setNovaObraNome] = useState('')
+  const [novaObraFuncionarios, setNovaObraFuncionarios] = useState('')
 
   // Dados da vistoria
   const [dados, setDados] = useState({
@@ -335,6 +336,14 @@ export default function NovaVistoriaPage() {
                   placeholder="Nome da obra"
                   className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition mb-3"
                   autoFocus
+                />
+                <input
+                  type="number"
+                  value={novaObraFuncionarios}
+                  onChange={e => setNovaObraFuncionarios(e.target.value)}
+                  placeholder="Número de funcionários na obra"
+                  min="1"
+                  className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition mb-3"
                 />
                 <div className="flex gap-2">
                   <button
