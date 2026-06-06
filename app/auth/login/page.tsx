@@ -75,37 +75,37 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1117] flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col items-center justify-center p-4">
 
       <div className="mb-8 flex flex-col items-center gap-3">
-        <div className="w-16 h-16 bg-[#185FA5] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/40">
+        <div className="w-16 h-16 bg-[var(--brand)] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/40">
           <ShieldCheck size={34} color="#E6F1FB" />
         </div>
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white tracking-tight">Vistoria NR 18</h1>
-          <p className="text-sm text-slate-400 mt-1">Sistema de segurança do trabalho com IA</p>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Vistoria NR 18</h1>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">Sistema de segurança do trabalho com IA</p>
         </div>
       </div>
 
-      <div className="w-full max-w-sm bg-[#16192a] border border-[#2a2d4a] rounded-2xl p-8 shadow-2xl">
-        <h2 className="text-lg font-semibold text-white mb-6">Entrar na sua conta</h2>
+      <div className="w-full max-w-sm bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-8 shadow-2xl">
+        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-6">Entrar na sua conta</h2>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-slate-400">E-mail</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">E-mail</label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="seu@email.com"
               autoComplete="email"
-              className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] focus:ring-1 focus:ring-[#185FA5] transition"
+              className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] transition"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-slate-400">Senha</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Senha</label>
             <div className="relative">
               <input
                 type={showPass ? 'text' : 'password'}
@@ -113,12 +113,12 @@ export default function LoginPage() {
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
                 autoComplete="current-password"
-                className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] focus:ring-1 focus:ring-[#185FA5] transition pr-11"
+                className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] transition pr-11"
               />
               <button
                 type="button"
                 onClick={() => setShowPass(!showPass)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
               >
                 {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -128,7 +128,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-[#185FA5] hover:bg-[#1a6bbf] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 mt-2"
+            className="w-full py-3 bg-[var(--brand)] hover:bg-[var(--brand-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 mt-2"
           >
             {loading ? (
               <><Loader2 size={18} className="animate-spin" /> Entrando...</>
@@ -137,15 +137,15 @@ export default function LoginPage() {
 
         </form>
 
-        <p className="text-center text-sm text-slate-500 mt-6">
+        <p className="text-center text-sm text-[var(--text-muted)] mt-6">
           Primeira vez?{' '}
-          <a href="/auth/register" className="text-[#185FA5] hover:text-blue-400 font-medium transition">
+          <a href="/auth/register" className="text-[var(--brand)] hover:text-blue-400 font-medium transition">
             Criar conta
           </a>
         </p>
       </div>
 
-      <p className="mt-8 text-xs text-slate-600">NR 18 · Portaria MTE nº 836/2026</p>
+      <p className="mt-8 text-xs text-[var(--text-muted)]">NR 18 · Portaria MTE nº 836/2026</p>
     </div>
   )
 }

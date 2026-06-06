@@ -230,7 +230,7 @@ export default function Avaliadores() {
     gestor:     'bg-purple-900/40 text-purple-300',
     avaliador:  'bg-blue-900/40 text-blue-300',
     estagiario: 'bg-amber-900/40 text-amber-300',
-    viewer:     'bg-slate-700 text-slate-300',
+    viewer:     'bg-slate-700 text-[var(--text-primary)]',
   }
 
   const avFiltrados = filtroConsultoria
@@ -238,20 +238,20 @@ export default function Avaliadores() {
     : avaliadores
 
   return (
-    <div className="min-h-screen bg-[#0f1117]">
+    <div className="min-h-screen bg-[var(--bg-primary)]">
 
       {/* Header */}
-      <header className="bg-[#16192a] border-b border-[#2a2d4a] px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
-        <button onClick={() => router.push('/master')} className="p-2 text-slate-400 hover:text-white transition">
+      <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
+        <button onClick={() => router.push('/master')} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition">
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-sm font-bold text-white">Gerenciar Avaliadores</h1>
-          <p className="text-xs text-slate-500">Painel Master</p>
+          <h1 className="text-sm font-bold text-[var(--text-primary)]">Gerenciar Avaliadores</h1>
+          <p className="text-xs text-[var(--text-muted)]">Painel Master</p>
         </div>
         <button
           onClick={openNova}
-          className="ml-auto flex items-center gap-2 px-4 py-2 bg-[#185FA5] hover:bg-[#1a6bbf] text-white text-sm font-medium rounded-xl transition"
+          className="ml-auto flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white text-sm font-medium rounded-xl transition"
         >
           <Plus size={15} />
           Novo avaliador
@@ -268,8 +268,8 @@ export default function Avaliadores() {
                 onClick={() => setFiltroConsultoria('')}
                 className={`px-4 py-2 rounded-xl text-sm transition border ${
                   filtroConsultoria === ''
-                    ? 'bg-[#185FA5] border-[#185FA5] text-white'
-                    : 'border-[#2a2d4a] text-slate-400 hover:border-slate-500'
+                    ? 'bg-[var(--brand)] border-[var(--brand)] text-white'
+                    : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-slate-500'
                 }`}
               >
                 Todas
@@ -280,8 +280,8 @@ export default function Avaliadores() {
                   onClick={() => setFiltroConsultoria(c.id)}
                   className={`px-4 py-2 rounded-xl text-sm transition border ${
                     filtroConsultoria === c.id
-                      ? 'bg-[#185FA5] border-[#185FA5] text-white'
-                      : 'border-[#2a2d4a] text-slate-400 hover:border-slate-500'
+                      ? 'bg-[var(--brand)] border-[var(--brand)] text-white'
+                      : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-slate-500'
                   }`}
                 >
                   {c.name}
@@ -293,15 +293,15 @@ export default function Avaliadores() {
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={28} className="animate-spin text-[#185FA5]" />
+            <Loader2 size={28} className="animate-spin text-[var(--brand)]" />
           </div>
         ) : avFiltrados.length === 0 ? (
           <div className="text-center py-20">
             <User size={48} className="text-slate-700 mx-auto mb-4" />
-            <p className="text-slate-400">Nenhum avaliador cadastrado</p>
+            <p className="text-[var(--text-secondary)]">Nenhum avaliador cadastrado</p>
             <button
               onClick={openNova}
-              className="mt-4 px-6 py-2.5 bg-[#185FA5] text-white text-sm rounded-xl hover:bg-[#1a6bbf] transition"
+              className="mt-4 px-6 py-2.5 bg-[var(--brand)] text-white text-sm rounded-xl hover:bg-[var(--brand-hover)] transition"
             >
               Cadastrar primeiro avaliador
             </button>
@@ -309,16 +309,16 @@ export default function Avaliadores() {
         ) : (
           <div className="flex flex-col gap-3">
             {avFiltrados.map(a => (
-              <div key={a.id} className="bg-[#16192a] border border-[#2a2d4a] rounded-2xl p-4">
+              <div key={a.id} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-[#185FA5]/20 border border-[#185FA5]/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-bold text-[#185FA5]">
+                  <div className="w-10 h-10 bg-[var(--brand)]/20 border border-[var(--brand)]/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-bold text-[var(--brand)]">
                       {a.full_name.split(' ').map(n => n[0]).slice(0, 2).join('')}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-white text-sm">{a.full_name}</span>
+                      <span className="font-medium text-[var(--text-primary)] text-sm">{a.full_name}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${roleColor[a.role] || roleColor.avaliador}`}>
                         {roleLabel[a.role] || a.role}
                       </span>
@@ -327,18 +327,18 @@ export default function Avaliadores() {
                       )}
                     </div>
                     <div className="flex flex-wrap gap-x-3 mt-0.5">
-                      <span className="text-xs text-slate-500">{a.email}</span>
-                      {a.registro_mte && <span className="text-xs text-slate-500">MTE {a.registro_mte}</span>}
-                      {a.crea && <span className="text-xs text-slate-500">{a.crea}</span>}
+                      <span className="text-xs text-[var(--text-muted)]">{a.email}</span>
+                      {a.registro_mte && <span className="text-xs text-[var(--text-muted)]">MTE {a.registro_mte}</span>}
+                      {a.crea && <span className="text-xs text-[var(--text-muted)]">{a.crea}</span>}
                       {a.consultoria && (
-                        <span className="text-xs text-slate-600">· {a.consultoria.name}</span>
+                        <span className="text-xs text-[var(--text-muted)]">· {a.consultoria.name}</span>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       onClick={() => openEdit(a)}
-                      className="p-2 text-slate-400 hover:text-white hover:bg-[#2a2d4a] rounded-lg transition"
+                      className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)] rounded-lg transition"
                     >
                       <Pencil size={15} />
                     </button>
@@ -361,13 +361,13 @@ export default function Avaliadores() {
       {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#16192a] border border-[#2a2d4a] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
 
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#2a2d4a] sticky top-0 bg-[#16192a]">
-              <h2 className="font-semibold text-white">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-surface)]">
+              <h2 className="font-semibold text-[var(--text-primary)]">
                 {editId ? 'Editar avaliador' : 'Novo avaliador'}
               </h2>
-              <button onClick={() => setShowModal(false)} className="p-1.5 text-slate-400 hover:text-white transition">
+              <button onClick={() => setShowModal(false)} className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition">
                 <X size={18} />
               </button>
             </div>
@@ -376,11 +376,11 @@ export default function Avaliadores() {
 
               {/* Consultoria */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-400">Consultoria *</label>
+                <label className="text-xs font-medium text-[var(--text-secondary)]">Consultoria *</label>
                 <select
                   value={form.consultoria_id}
                   onChange={e => update('consultoria_id', e.target.value)}
-                  className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm focus:outline-none focus:border-[#185FA5] transition"
+                  className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
                 >
                   <option value="">Selecione a consultoria</option>
                   {consultorias.map(c => (
@@ -391,26 +391,26 @@ export default function Avaliadores() {
 
               {/* Dados pessoais */}
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Dados pessoais</p>
+                <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Dados pessoais</p>
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-slate-400">Nome completo *</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">Nome completo *</label>
                     <input
                       type="text"
                       value={form.full_name}
                       onChange={e => update('full_name', e.target.value)}
                       placeholder="Carlos Henrique Borges"
-                      className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                      className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                     />
                   </div>
 
                   {/* Função */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-slate-400">Função *</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">Função *</label>
                     <select
                       value={form.role_key}
                       onChange={e => selectRole(e.target.value)}
-                      className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm focus:outline-none focus:border-[#185FA5] transition"
+                      className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
                     >
                       {ROLES_UNICOS.map(r => (
                         <option key={r.value + r.tipo} value={r.value}>{r.label}</option>
@@ -421,16 +421,16 @@ export default function Avaliadores() {
                   {/* Registro MTE */}
                   {form.tipo_registro === 'mte' && (
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-400">Registro MTE</label>
-                      <div className="flex gap-2 items-center bg-[#0f1117] border border-[#2a2d4a] rounded-xl px-4 py-3 focus-within:border-[#185FA5] transition">
-                        <span className="text-slate-500 text-sm font-mono">MTE</span>
-                        <div className="w-px h-4 bg-[#2a2d4a]" />
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">Registro MTE</label>
+                      <div className="flex gap-2 items-center bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 focus-within:border-[var(--brand)] transition">
+                        <span className="text-[var(--text-muted)] text-sm font-mono">MTE</span>
+                        <div className="w-px h-4 bg-[var(--border)]" />
                         <input
                           type="text"
                           value={form.registro_mte}
                           onChange={e => update('registro_mte', e.target.value)}
                           placeholder="12.048/MG"
-                          className="flex-1 bg-transparent text-white text-sm placeholder:text-slate-600 focus:outline-none"
+                          className="flex-1 bg-transparent text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none"
                         />
                       </div>
                     </div>
@@ -439,14 +439,14 @@ export default function Avaliadores() {
                   {/* CREA */}
                   {form.tipo_registro === 'crea' && (
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-400">CREA</label>
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">CREA</label>
                       <div className="flex gap-2">
-                        <div className="flex items-center gap-1 bg-[#0f1117] border border-[#2a2d4a] rounded-xl px-3 focus-within:border-[#185FA5] transition">
-                          <span className="text-slate-500 text-sm font-mono">CREA-</span>
+                        <div className="flex items-center gap-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-3 focus-within:border-[var(--brand)] transition">
+                          <span className="text-[var(--text-muted)] text-sm font-mono">CREA-</span>
                           <select
                             value={form.crea_estado}
                             onChange={e => update('crea_estado', e.target.value)}
-                            className="bg-transparent text-white text-sm focus:outline-none py-3 cursor-pointer"
+                            className="bg-transparent text-[var(--text-primary)] text-sm focus:outline-none py-3 cursor-pointer"
                           >
                             {ESTADOS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                           </select>
@@ -456,7 +456,7 @@ export default function Avaliadores() {
                           value={form.crea_numero}
                           onChange={e => update('crea_numero', e.target.value)}
                           placeholder="145.832"
-                          className="flex-1 px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                          className="flex-1 px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                         />
                       </div>
                     </div>
@@ -464,9 +464,9 @@ export default function Avaliadores() {
 
                   {/* Estagiário — aviso */}
                   {form.role_key === 'estagiario' && (
-                    <div className="flex items-start gap-2 bg-[#185FA5]/10 border border-[#185FA5]/30 rounded-xl px-4 py-3">
-                      <span className="text-[#185FA5] text-base leading-none mt-0.5">ℹ</span>
-                      <p className="text-xs text-slate-400 leading-relaxed">
+                    <div className="flex items-start gap-2 bg-[var(--brand)]/10 border border-[var(--brand)]/30 rounded-xl px-4 py-3">
+                      <span className="text-[var(--brand)] text-base leading-none mt-0.5">ℹ</span>
+                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                         Estagiários podem realizar vistorias, mas o relatório deve ser
                         revisado e assinado por um Técnico ou Engenheiro responsável.
                       </p>
@@ -474,13 +474,13 @@ export default function Avaliadores() {
                   )}
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-slate-400">Telefone</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">Telefone</label>
                     <input
                       type="text"
                       value={form.phone}
                       onChange={e => update('phone', e.target.value)}
                       placeholder="(27) 99999-0000"
-                      className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                      className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                     />
                   </div>
                 </div>
@@ -489,37 +489,37 @@ export default function Avaliadores() {
               {/* Acesso — só para novo cadastro */}
               {!editId && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Acesso ao sistema</p>
+                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Acesso ao sistema</p>
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-400">E-mail *</label>
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">E-mail *</label>
                       <input
                         type="email"
                         value={form.email}
                         onChange={e => update('email', e.target.value)}
                         placeholder="avaliador@email.com"
-                        className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-400">Senha provisória *</label>
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">Senha provisória *</label>
                       <div className="relative">
                         <input
                           type={showPass ? 'text' : 'password'}
                           value={form.password}
                           onChange={e => update('password', e.target.value)}
                           placeholder="Mínimo 6 caracteres"
-                          className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition pr-11"
+                          className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition pr-11"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPass(!showPass)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
                         >
                           {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
                         </button>
                       </div>
-                      <p className="text-xs text-slate-600">O avaliador poderá alterar a senha após o primeiro acesso.</p>
+                      <p className="text-xs text-[var(--text-muted)]">O avaliador poderá alterar a senha após o primeiro acesso.</p>
                     </div>
                   </div>
                 </div>
@@ -529,14 +529,14 @@ export default function Avaliadores() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-3 border border-[#2a2d4a] text-slate-400 hover:text-white rounded-xl text-sm transition"
+                  className="flex-1 py-3 border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl text-sm transition"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex-1 py-3 bg-[#185FA5] hover:bg-[#1a6bbf] disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[var(--brand)] hover:bg-[var(--brand-hover)] disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2"
                 >
                   {saving
                     ? <><Loader2 size={16} className="animate-spin" /> Salvando...</>

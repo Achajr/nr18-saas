@@ -66,12 +66,12 @@ const MULTA_CONFIG = {
 
 // Cores dos chips por posicao
 const CHIP_COLORS = [
-  'bg-[#185FA5] text-white',
+  'bg-[var(--brand)] text-white',
   'bg-[#3B6D11] text-white',
-  'bg-[#854F0B] text-white',
-  'bg-[#6B21A8] text-white',
-  'bg-[#0E7490] text-white',
-  'bg-[#9D174D] text-white',
+  'bg-[#854F0B] text-[var(--text-primary)]',
+  'bg-[#6B21A8] text-[var(--text-primary)]',
+  'bg-[#0E7490] text-[var(--text-primary)]',
+  'bg-[#9D174D] text-[var(--text-primary)]',
 ]
 
 function abreviar(nome: string): string {
@@ -413,28 +413,28 @@ export default function ChecklistPage() {
   const progresso = totalItens > 0 ? Math.round((respondidos / totalItens) * 100) : 0
   const statusAtual = vistoria?.status
 
-  if (loading) return <div className="min-h-screen bg-[#0f1117] flex items-center justify-center"><div className="w-10 h-10 border-2 border-[#185FA5] border-t-transparent rounded-full animate-spin" /></div>
+  if (loading) return <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center"><div className="w-10 h-10 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" /></div>
 
   return (
-    <div className="min-h-screen bg-[#0f1117] pb-32">
+    <div className="min-h-screen bg-[var(--bg-primary)] pb-32">
       <input ref={fileInputRef} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={handleFotoChange} />
 
       {/* Modal texto NR */}
       {modalNr && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-[#16192a] border border-[#2a2d4a] rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#2a2d4a] sticky top-0 bg-[#16192a]">
-              <div><span className="text-xs font-mono text-[#185FA5]">{modalNr.ref}</span><h3 className="text-sm font-semibold text-white mt-0.5">Texto legal NR-18</h3></div>
-              <button onClick={() => setModalNr(null)} className="p-2 text-slate-500 hover:text-white transition"><X size={18} /></button>
+          <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-surface)]">
+              <div><span className="text-xs font-mono text-[var(--brand)]">{modalNr.ref}</span><h3 className="text-sm font-semibold text-[var(--text-primary)] mt-0.5">Texto legal NR-18</h3></div>
+              <button onClick={() => setModalNr(null)} className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"><X size={18} /></button>
             </div>
             <div className="px-5 py-4 space-y-3">
               <div className="flex gap-2 flex-wrap">
                 <span className={'text-xs px-2 py-1 rounded-full font-medium ' + NIVEL_CONFIG[modalNr.nivel].bg + ' ' + NIVEL_CONFIG[modalNr.nivel].text}>⚠ {NIVEL_CONFIG[modalNr.nivel].label}</span>
                 <span className={'text-xs px-2 py-1 rounded-full font-medium ' + MULTA_CONFIG[modalNr.multa].bg + ' ' + MULTA_CONFIG[modalNr.multa].text}>{MULTA_INFO[modalNr.multa].label} — {MULTA_INFO[modalNr.multa].faixa}</span>
-                <span className="text-xs px-2 py-1 rounded-full bg-[#2a2d4a] text-slate-400">{modalNr.perigo}</span>
+                <span className="text-xs px-2 py-1 rounded-full bg-[var(--border)] text-[var(--text-secondary)]">{modalNr.perigo}</span>
               </div>
-              <p className="text-sm text-slate-300 leading-relaxed">{modalNr.nr}</p>
-              <p className="text-xs text-slate-500 italic">{MULTA_INFO[modalNr.multa].desc}</p>
+              <p className="text-sm text-[var(--text-primary)] leading-relaxed">{modalNr.nr}</p>
+              <p className="text-xs text-[var(--text-muted)] italic">{MULTA_INFO[modalNr.multa].desc}</p>
             </div>
           </div>
         </div>
@@ -443,13 +443,13 @@ export default function ChecklistPage() {
       {/* Modal Nova Empreiteira */}
       {modalEmpreiteira && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-[#16192a] border border-[#2a2d4a] rounded-2xl w-full max-w-md">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#2a2d4a]">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <div>
-                <h3 className="text-sm font-semibold text-white">Adicionar Empreiteira</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Digite o CNPJ para buscar automaticamente</p>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Adicionar Empreiteira</h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">Digite o CNPJ para buscar automaticamente</p>
               </div>
-              <button onClick={() => setModalEmpreiteira(false)} className="p-2 text-slate-500 hover:text-white transition"><X size={18} /></button>
+              <button onClick={() => setModalEmpreiteira(false)} className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"><X size={18} /></button>
             </div>
             <div className="px-5 py-4 space-y-3">
               <div className="relative">
@@ -476,18 +476,18 @@ export default function ChecklistPage() {
                     }
                   }}
                   placeholder="CNPJ (busca automática)"
-                  className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition" />
+                  className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition" />
               </div>
               <input type="text" value={novaEmp.name} onChange={e => setNovaEmp(p => ({ ...p, name: e.target.value }))}
                 placeholder="Nome da empreiteira"
-                className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition" />
+                className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition" />
               <input type="number" value={novaEmp.num_funcionarios} onChange={e => setNovaEmp(p => ({ ...p, num_funcionarios: e.target.value }))}
                 placeholder="Nº de funcionários na obra" min="1"
-                className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition" />
+                className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition" />
               <div className="flex gap-2 pt-1">
-                <button onClick={() => setModalEmpreiteira(false)} className="flex-1 py-3 border border-[#2a2d4a] text-slate-400 rounded-xl text-sm transition hover:text-white">Cancelar</button>
+                <button onClick={() => setModalEmpreiteira(false)} className="flex-1 py-3 border border-[var(--border)] text-[var(--text-secondary)] rounded-xl text-sm transition hover:text-[var(--text-primary)]">Cancelar</button>
                 <button onClick={adicionarEmpreiteira} disabled={salvandoEmp}
-                  className="flex-1 py-3 bg-[#185FA5] hover:bg-[#1a6bbf] text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30">
+                  className="flex-1 py-3 bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-[var(--brand-muted)]">
                   {salvandoEmp ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} Adicionar
                 </button>
               </div>
@@ -497,34 +497,34 @@ export default function ChecklistPage() {
       )}
 
       {/* Header */}
-      <header className="bg-[#16192a] border-b border-[#2a2d4a] px-4 py-4 sticky top-0 z-20">
+      <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-4 py-4 sticky top-0 z-20">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <button onClick={() => router.push('/dashboard')} className="p-2 text-slate-400 hover:text-white transition"><ArrowLeft size={20} /></button>
+          <button onClick={() => router.push('/dashboard')} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"><ArrowLeft size={20} /></button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-bold text-white truncate">Checklist NR-18 — {vistoria?.obra?.empresa_cliente?.name || vistoria?.obra?.name}</h1>
+            <h1 className="text-sm font-bold text-[var(--text-primary)] truncate">Checklist NR-18 — {vistoria?.obra?.empresa_cliente?.name || vistoria?.obra?.name}</h1>
             <div className="flex items-center gap-2 mt-0.5">
-              <p className="text-xs text-slate-500">Vistoria {vistoria?.numero}</p>
+              <p className="text-xs text-[var(--text-muted)]">Vistoria {vistoria?.numero}</p>
               {statusAtual === 'incompleta' && <span className="text-xs bg-amber-900/40 text-amber-400 px-2 py-0.5 rounded-full">Incompleta</span>}
               {statusAtual === 'concluida' && <span className="text-xs bg-green-900/40 text-green-400 px-2 py-0.5 rounded-full">Concluída</span>}
             </div>
           </div>
           <button onClick={() => setModalEmpreiteira(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-[#185FA5]/20 hover:bg-[#185FA5]/30 border border-[#185FA5]/40 text-[#185FA5] text-xs font-medium rounded-xl transition"
+            className="flex items-center gap-1.5 px-3 py-2 bg-[var(--brand)]/20 hover:bg-[var(--brand)]/30 border border-[var(--brand)]/40 text-[var(--brand)] text-xs font-medium rounded-xl transition"
             title="Adicionar empreiteira">
             <Building2 size={14} /> Empreiteira
           </button>
         </div>
         <div className="max-w-2xl mx-auto mt-3">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs text-slate-500">{respondidos}/{totalItens} itens</span>
-            <div className="flex items-center gap-3 text-xs"><span className="text-green-400">{conformes} C</span><span className="text-red-400">{naoConformes} NC</span><span className="font-bold text-white">{progresso}%</span></div>
+            <span className="text-xs text-[var(--text-muted)]">{respondidos}/{totalItens} itens</span>
+            <div className="flex items-center gap-3 text-xs"><span className="text-green-400">{conformes} C</span><span className="text-red-400">{naoConformes} NC</span><span className="font-bold text-[var(--text-primary)]">{progresso}%</span></div>
           </div>
-          <div className="h-1.5 bg-[#2a2d4a] rounded-full overflow-hidden"><div className="h-full bg-[#185FA5] rounded-full transition-all duration-500" style={{ width: progresso + '%' }} /></div>
+          <div className="h-1.5 bg-[var(--border)] rounded-full overflow-hidden"><div className="h-full bg-[var(--brand)] rounded-full transition-all duration-500" style={{ width: progresso + '%' }} /></div>
         </div>
         {/* Chips de empresas */}
         {chips.length > 1 && (
           <div className="max-w-2xl mx-auto mt-2 flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs text-slate-600">Empresas:</span>
+            <span className="text-xs text-[var(--text-muted)]">Empresas:</span>
             {chips.map(c => (
               <span key={c.id} className={'text-xs px-2 py-0.5 rounded-full font-medium ' + c.color}>{c.abrev}</span>
             ))}
@@ -539,24 +539,24 @@ export default function ChecklistPage() {
           const ncBloco = itensBloco.filter(i => i.resposta === 'NC').length
           const aberto = secoesAbertas[bloco.id]
           return (
-            <div key={bloco.id} className="bg-[#16192a] border border-[#2a2d4a] rounded-2xl overflow-hidden">
-              <button onClick={() => toggleSecao(bloco.id)} className="w-full px-4 py-4 flex items-center gap-3 text-left hover:bg-[#1a1d2e] transition">
+            <div key={bloco.id} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
+              <button onClick={() => toggleSecao(bloco.id)} className="w-full px-4 py-4 flex items-center gap-3 text-left hover:bg-[var(--bg-elevated)] transition">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-mono text-[#185FA5] flex-shrink-0">{bloco.ref}</span>
-                    <span className="font-semibold text-white text-sm">{bloco.titulo.split('—').slice(1).join('—').trim() || bloco.titulo}</span>
+                    <span className="text-xs font-mono text-[var(--brand)] flex-shrink-0">{bloco.ref}</span>
+                    <span className="font-semibold text-[var(--text-primary)] text-sm">{bloco.titulo.split('—').slice(1).join('—').trim() || bloco.titulo}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-xs text-slate-500">{respondidosBloco}/{bloco.itens.length} respondidos</span>
+                    <span className="text-xs text-[var(--text-muted)]">{respondidosBloco}/{bloco.itens.length} respondidos</span>
                     {ncBloco > 0 && <span className="text-xs text-[#A32D2D] bg-[#FCEBEB] px-2 py-0.5 rounded-full font-medium">{ncBloco} NC</span>}
                     {respondidosBloco === bloco.itens.length && <span className="text-xs text-[#3B6D11] bg-[#EAF3DE] px-2 py-0.5 rounded-full font-medium">Concluído</span>}
                   </div>
                 </div>
-                {aberto ? <ChevronUp size={16} className="text-slate-500 flex-shrink-0" /> : <ChevronDown size={16} className="text-slate-500 flex-shrink-0" />}
+                {aberto ? <ChevronUp size={16} className="text-[var(--text-muted)] flex-shrink-0" /> : <ChevronDown size={16} className="text-[var(--text-muted)] flex-shrink-0" />}
               </button>
 
               {aberto && (
-                <div className="border-t border-[#2a2d4a] divide-y divide-[#2a2d4a]/60">
+                <div className="border-t border-[var(--border)] divide-y divide-[var(--border)]/60">
                   {bloco.itens.map(item => {
                     const it = itens[item.id]
                     if (!it) return null
@@ -566,10 +566,10 @@ export default function ChecklistPage() {
                         <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                           <span className={'text-xs px-2 py-0.5 rounded-full font-medium ' + NIVEL_CONFIG[item.nivel].bg + ' ' + NIVEL_CONFIG[item.nivel].text}>{NIVEL_CONFIG[item.nivel].label}</span>
                           <span className={'text-xs px-2 py-0.5 rounded-full font-medium ' + MULTA_CONFIG[item.multa].bg + ' ' + MULTA_CONFIG[item.multa].text}>{MULTA_INFO[item.multa].label} {MULTA_INFO[item.multa].faixa}</span>
-                          <span className="text-xs text-slate-600 bg-[#2a2d4a]/50 px-2 py-0.5 rounded-full">{item.ref}</span>
-                          <button onClick={() => setModalNr(item)} className="ml-auto p-1 text-slate-600 hover:text-[#185FA5] transition" title="Ver texto legal"><Info size={14} /></button>
+                          <span className="text-xs text-[var(--text-muted)] bg-[var(--border)]/50 px-2 py-0.5 rounded-full">{item.ref}</span>
+                          <button onClick={() => setModalNr(item)} className="ml-auto p-1 text-[var(--text-muted)] hover:text-[var(--brand)] transition" title="Ver texto legal"><Info size={14} /></button>
                         </div>
-                        <p className="text-sm text-slate-200 leading-relaxed mb-3">{item.t}</p>
+                        <p className="text-sm text-[var(--text-primary)] leading-relaxed mb-3">{item.t}</p>
                         <div className="flex gap-2 mb-3">
                           {(['C', 'NC', 'NA'] as const).map(r => (
                             <button key={r} onClick={() => setResposta(item.id, r)}
@@ -578,7 +578,7 @@ export default function ChecklistPage() {
                                   ? r === 'C'  ? 'border-[#3B6D11] bg-[#EAF3DE] text-[#3B6D11]'
                                   : r === 'NC' ? 'border-[#A32D2D] bg-[#FCEBEB] text-[#A32D2D]'
                                   :              'border-[#888780] bg-[#F1EFE8] text-[#555552]'
-                                  : 'border-[#2a2d4a] text-slate-500 hover:border-slate-500'
+                                  : 'border-[var(--border)] text-[var(--text-muted)] hover:border-slate-500'
                               )}>
                               {r === 'C' ? '✓ Conforme' : r === 'NC' ? '✗ Não conforme' : '— N/A'}
                             </button>
@@ -589,19 +589,19 @@ export default function ChecklistPage() {
                             {/* Chips de empresa */}
                             {chips.length > 0 && (
                               <div className="pl-2">
-                                <div className="text-xs text-slate-500 mb-1.5">Empresa(s) responsável(is):</div>
+                                <div className="text-xs text-[var(--text-muted)] mb-1.5">Empresa(s) responsável(is):</div>
                                 <div className="flex gap-1.5 flex-wrap">
                                   {chips.map(c => {
                                     const sel = it.empresas_selecionadas.includes(c.id)
                                     return (
                                       <button key={c.id} onClick={() => toggleEmpresa(item.id, c.id)}
-                                        className={'text-xs px-2.5 py-1 rounded-full font-medium transition border-2 ' + (sel ? c.color + ' border-transparent' : 'bg-transparent border-[#2a2d4a] text-slate-500 hover:border-slate-500')}>
+                                        className={'text-xs px-2.5 py-1 rounded-full font-medium transition border-2 ' + (sel ? c.color + ' border-transparent' : 'bg-transparent border-[var(--border)] text-[var(--text-muted)] hover:border-slate-500')}>
                                         {c.abrev}
                                       </button>
                                     )
                                   })}
                                   <button onClick={() => setModalEmpreiteira(true)}
-                                    className="text-xs px-2.5 py-1 rounded-full border border-[#185FA5]/40 bg-[#185FA5]/10 text-[#185FA5] hover:bg-[#185FA5]/20 transition flex items-center gap-1 font-medium">
+                                    className="text-xs px-2.5 py-1 rounded-full border border-[var(--brand)]/40 bg-[var(--brand)]/10 text-[var(--brand)] hover:bg-[var(--brand)]/20 transition flex items-center gap-1 font-medium">
                                     <Plus size={10} /> + empreiteira
                                   </button>
                                 </div>
@@ -610,22 +610,22 @@ export default function ChecklistPage() {
                             <div className="relative pl-2">
                               <textarea value={it.observacao} onChange={e => setObservacao(item.id, e.target.value)}
                                 placeholder="Descreva o que foi observado..." rows={3}
-                                className="w-full px-3 py-2.5 pr-10 bg-[#0f1117] border border-[#2a2d4a] focus:border-[#A32D2D]/50 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none transition resize-none" />
+                                className="w-full px-3 py-2.5 pr-10 bg-[var(--bg-primary)] border border-[var(--border)] focus:border-[#A32D2D]/50 rounded-xl text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none transition resize-none" />
                               <button onClick={() => gerarObservacaoIA(item.id)} disabled={it.gerando_ia}
                                 title="Reescrever com IA (escreva a observação primeiro)"
-                                className="absolute right-2 top-2 p-1.5 text-slate-500 hover:text-[#185FA5] transition rounded-lg hover:bg-[#185FA5]/10">
-                                {it.gerando_ia ? <Loader2 size={15} className="animate-spin text-[#185FA5]" /> : <Sparkles size={15} />}
+                                className="absolute right-2 top-2 p-1.5 text-[var(--text-muted)] hover:text-[var(--brand)] transition rounded-lg hover:bg-[var(--brand)]/10">
+                                {it.gerando_ia ? <Loader2 size={15} className="animate-spin text-[var(--brand)]" /> : <Sparkles size={15} />}
                               </button>
                             </div>
                             <div className="flex gap-2 flex-wrap pl-2">
                               {fotosItem.map((f, fi) => (
-                                <div key={fi} className="relative w-20 h-20 rounded-xl overflow-hidden border border-[#2a2d4a]">
+                                <div key={fi} className="relative w-20 h-20 rounded-xl overflow-hidden border border-[var(--border)]">
                                   <img src={f.url} alt="" className="w-full h-full object-cover" />
-                                  <button onClick={() => removerFoto(item.id, f.url, f.db_id, f.storage_path)} className="absolute top-1 right-1 p-0.5 bg-[#A32D2D] rounded-full"><Trash2 size={10} className="text-white" /></button>
+                                  <button onClick={() => removerFoto(item.id, f.url, f.db_id, f.storage_path)} className="absolute top-1 right-1 p-0.5 bg-[#A32D2D] rounded-full"><Trash2 size={10} className="text-[var(--text-primary)]" /></button>
                                 </div>
                               ))}
                               <button onClick={() => abrirCamera(item.id)}
-                                className="w-20 h-20 border border-dashed border-[#2a2d4a] hover:border-[#185FA5]/50 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-500 hover:text-[#185FA5] transition">
+                                className="w-20 h-20 border border-dashed border-[var(--border)] hover:border-[var(--brand)]/50 rounded-xl flex flex-col items-center justify-center gap-1 text-[var(--text-muted)] hover:text-[var(--brand)] transition">
                                 <Camera size={18} /><span className="text-xs">Foto</span>
                               </button>
                             </div>
@@ -642,14 +642,14 @@ export default function ChecklistPage() {
       </main>
 
       {/* Footer fixo */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#16192a] border-t border-[#2a2d4a] px-4 py-3 z-20">
+      <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-surface)] border-t border-[var(--border)] px-4 py-3 z-20">
         <div className="max-w-2xl mx-auto flex gap-2">
           <button onClick={salvarParcialmente} disabled={saving}
-            className="flex-1 py-3 border border-[#2a2d4a] text-slate-300 hover:text-white rounded-2xl text-xs font-medium transition flex items-center justify-center gap-1.5">
+            className="flex-1 py-3 border border-[var(--border)] text-[var(--text-primary)] hover:text-[var(--text-primary)] rounded-2xl text-xs font-medium transition flex items-center justify-center gap-1.5">
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Salvar parcial
           </button>
           <button onClick={concluirVistoria} disabled={concluindo || respondidos === 0}
-            className="flex-[2] py-3 bg-[#185FA5] hover:bg-[#1a6bbf] disabled:opacity-50 text-white rounded-2xl text-sm font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30">
+            className="flex-[2] py-3 bg-[var(--brand)] hover:bg-[var(--brand-hover)] disabled:opacity-50 text-white rounded-2xl text-sm font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-[var(--brand-muted)]">
             {concluindo ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
             Concluir e gerar relatório
           </button>

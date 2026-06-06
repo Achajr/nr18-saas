@@ -298,20 +298,20 @@ export default function EmpresasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1117]">
+    <div className="min-h-screen bg-[var(--bg-primary)]">
 
       {/* Header */}
-      <header className="bg-[#16192a] border-b border-[#2a2d4a] px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
-        <button onClick={() => router.push('/consultoria')} className="p-2 text-slate-400 hover:text-white transition">
+      <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
+        <button onClick={() => router.push('/consultoria')} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition">
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-sm font-bold text-white">Empresas clientes</h1>
-          <p className="text-xs text-slate-500">Painel da Consultoria</p>
+          <h1 className="text-sm font-bold text-[var(--text-primary)]">Empresas clientes</h1>
+          <p className="text-xs text-[var(--text-muted)]">Painel da Consultoria</p>
         </div>
         <button
           onClick={openNova}
-          className="ml-auto flex items-center gap-2 px-4 py-2 bg-[#185FA5] hover:bg-[#1a6bbf] text-white text-sm font-medium rounded-xl transition"
+          className="ml-auto flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white text-sm font-medium rounded-xl transition"
         >
           <Plus size={15} />
           Nova empresa
@@ -321,15 +321,15 @@ export default function EmpresasPage() {
       <main className="max-w-5xl mx-auto px-4 py-8">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={28} className="animate-spin text-[#185FA5]" />
+            <Loader2 size={28} className="animate-spin text-[var(--brand)]" />
           </div>
         ) : empresas.length === 0 ? (
           <div className="text-center py-20">
             <Building2 size={48} className="text-slate-700 mx-auto mb-4" />
-            <p className="text-slate-400">Nenhuma empresa cadastrada</p>
+            <p className="text-[var(--text-secondary)]">Nenhuma empresa cadastrada</p>
             <button
               onClick={openNova}
-              className="mt-4 px-6 py-2.5 bg-[#185FA5] text-white text-sm rounded-xl hover:bg-[#1a6bbf] transition"
+              className="mt-4 px-6 py-2.5 bg-[var(--brand)] text-white text-sm rounded-xl hover:bg-[var(--brand-hover)] transition"
             >
               Cadastrar primeira empresa
             </button>
@@ -337,16 +337,16 @@ export default function EmpresasPage() {
         ) : (
           <div className="flex flex-col gap-4">
             {empresas.map(e => (
-              <div key={e.id} className="bg-[#16192a] border border-[#2a2d4a] rounded-2xl p-5">
+              <div key={e.id} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-5">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-[#185FA5]/20 border border-[#185FA5]/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span className="text-base font-bold text-[#185FA5]">
+                  <div className="w-12 h-12 bg-[var(--brand)]/20 border border-[var(--brand)]/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="text-base font-bold text-[var(--brand)]">
                       {e.name.slice(0, 2).toUpperCase()}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-white text-sm">{e.name}</h3>
+                      <h3 className="font-semibold text-[var(--text-primary)] text-sm">{e.name}</h3>
                       {e.grau_risco && (
                         <span className={`text-xs px-2 py-0.5 rounded-full ${grauColors[e.grau_risco]}`}>
                           Grau {e.grau_risco}
@@ -357,32 +357,32 @@ export default function EmpresasPage() {
                       )}
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-                      {e.cnpj && <span className="text-xs text-slate-500">{e.cnpj}</span>}
+                      {e.cnpj && <span className="text-xs text-[var(--text-muted)]">{e.cnpj}</span>}
                       {e.cidade && (
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                        <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
                           <MapPin size={10} /> {e.cidade}/{e.uf}
                         </span>
                       )}
                       {e.email && (
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                        <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
                           <Mail size={10} /> {e.email}
                         </span>
                       )}
                       {e.phone && (
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                        <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
                           <Phone size={10} /> {e.phone}
                         </span>
                       )}
                     </div>
                     {e.avaliador && (
                       <div className="mt-1.5">
-                        <span className="text-xs text-slate-600">Avaliador: </span>
-                        <span className="text-xs text-slate-400">{e.avaliador.full_name}</span>
+                        <span className="text-xs text-[var(--text-muted)]">Avaliador: </span>
+                        <span className="text-xs text-[var(--text-secondary)]">{e.avaliador.full_name}</span>
                       </div>
                     )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <button onClick={() => openEdit(e)} className="p-2 text-slate-400 hover:text-white hover:bg-[#2a2d4a] rounded-lg transition">
+                    <button onClick={() => openEdit(e)} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)] rounded-lg transition">
                       <Pencil size={15} />
                     </button>
                     <button
@@ -402,13 +402,13 @@ export default function EmpresasPage() {
       {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#16192a] border border-[#2a2d4a] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
 
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#2a2d4a] sticky top-0 bg-[#16192a]">
-              <h2 className="font-semibold text-white">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-surface)]">
+              <h2 className="font-semibold text-[var(--text-primary)]">
                 {editId ? 'Editar empresa' : 'Nova empresa cliente'}
               </h2>
-              <button onClick={() => setShowModal(false)} className="p-1.5 text-slate-400 hover:text-white transition">
+              <button onClick={() => setShowModal(false)} className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition">
                 <X size={18} />
               </button>
             </div>
@@ -417,12 +417,12 @@ export default function EmpresasPage() {
 
               {/* Dados da empresa */}
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Dados da empresa</p>
+                <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Dados da empresa</p>
                 <div className="flex flex-col gap-3">
 
                   {/* CNPJ */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-slate-400">CNPJ</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">CNPJ</label>
                     <div className="relative">
                       <input
                         type="text"
@@ -430,68 +430,68 @@ export default function EmpresasPage() {
                         onChange={e => handleCnpjChange(e.target.value)}
                         placeholder="00.000.000/0000-00"
                         maxLength={18}
-                        className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition pr-10"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition pr-10"
                       />
                       {buscandoCnpj && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <Loader2 size={16} className="animate-spin text-[#185FA5]" />
+                          <Loader2 size={16} className="animate-spin text-[var(--brand)]" />
                         </div>
                       )}
                     </div>
-                    <p className="text-xs text-slate-600">Digite o CNPJ — dados preenchidos automaticamente</p>
+                    <p className="text-xs text-[var(--text-muted)]">Digite o CNPJ — dados preenchidos automaticamente</p>
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-slate-400">Razão social *</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">Razão social *</label>
                     <input
                       type="text"
                       value={form.name}
                       onChange={e => update('name', e.target.value)}
                       placeholder="Construtora ABC Ltda"
-                      className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                      className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                     />
                   </div>
 
                   <div className="flex gap-3">
                     <div className="flex flex-col gap-1.5 flex-1">
-                      <label className="text-xs font-medium text-slate-400">Telefone</label>
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">Telefone</label>
                       <input
                         type="text"
                         value={form.phone}
                         onChange={e => update('phone', e.target.value)}
                         placeholder="(27) 99999-0000"
-                        className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                       />
                     </div>
                     <div className="flex flex-col gap-1.5 flex-1">
-                      <label className="text-xs font-medium text-slate-400">E-mail</label>
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">E-mail</label>
                       <input
                         type="email"
                         value={form.email}
                         onChange={e => update('email', e.target.value)}
                         placeholder="contato@empresa.com.br"
-                        className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                       />
                     </div>
                   </div>
 
                   <div className="flex gap-3">
                     <div className="flex flex-col gap-1.5 flex-[2]">
-                      <label className="text-xs font-medium text-slate-400">CNAE principal</label>
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">CNAE principal</label>
                       <input
                         type="text"
                         value={form.cnae}
                         onChange={e => update('cnae', e.target.value)}
                         placeholder="4120400"
-                        className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                       />
                     </div>
                     <div className="flex flex-col gap-1.5 flex-1">
-                      <label className="text-xs font-medium text-slate-400">Grau de risco</label>
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">Grau de risco</label>
                       <select
                         value={form.grau_risco}
                         onChange={e => update('grau_risco', e.target.value)}
-                        className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm focus:outline-none focus:border-[#185FA5] transition"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
                       >
                         {GRAUS.map(g => (
                           <option key={g} value={g}>Grau {g}</option>
@@ -504,10 +504,10 @@ export default function EmpresasPage() {
 
               {/* Endereço */}
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Endereço</p>
+                <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Endereço</p>
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-slate-400">CEP</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">CEP</label>
                     <div className="relative">
                       <input
                         type="text"
@@ -515,42 +515,42 @@ export default function EmpresasPage() {
                         onChange={e => handleCepChange(e.target.value)}
                         placeholder="00000-000"
                         maxLength={9}
-                        className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition pr-10"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition pr-10"
                       />
                       {buscandoCep && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <Loader2 size={16} className="animate-spin text-[#185FA5]" />
+                          <Loader2 size={16} className="animate-spin text-[var(--brand)]" />
                         </div>
                       )}
                     </div>
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-slate-400">Endereço</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">Endereço</label>
                     <input
                       type="text"
                       value={form.endereco}
                       onChange={e => update('endereco', e.target.value)}
                       placeholder="Rua, nº, complemento"
-                      className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                      className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                     />
                   </div>
                   <div className="flex gap-3">
                     <div className="flex flex-col gap-1.5 flex-[2]">
-                      <label className="text-xs font-medium text-slate-400">Cidade</label>
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">Cidade</label>
                       <input
                         type="text"
                         value={form.cidade}
                         onChange={e => update('cidade', e.target.value)}
                         placeholder="Vitória"
-                        className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                       />
                     </div>
                     <div className="flex flex-col gap-1.5 flex-1">
-                      <label className="text-xs font-medium text-slate-400">UF</label>
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">UF</label>
                       <select
                         value={form.uf}
                         onChange={e => update('uf', e.target.value)}
-                        className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm focus:outline-none focus:border-[#185FA5] transition"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
                       >
                         <option value="">UF</option>
                         {ESTADOS_UF.map(uf => (
@@ -564,38 +564,38 @@ export default function EmpresasPage() {
 
               {/* Responsável */}
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Responsável na empresa</p>
+                <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Responsável na empresa</p>
                 <div className="flex flex-col gap-3">
                   <div className="flex gap-3">
                     <div className="flex flex-col gap-1.5 flex-[2]">
-                      <label className="text-xs font-medium text-slate-400">Nome</label>
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">Nome</label>
                       <input
                         type="text"
                         value={form.responsavel_nome}
                         onChange={e => update('responsavel_nome', e.target.value)}
                         placeholder="João da Silva"
-                        className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                       />
                     </div>
                     <div className="flex flex-col gap-1.5 flex-1">
-                      <label className="text-xs font-medium text-slate-400">Cargo</label>
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">Cargo</label>
                       <input
                         type="text"
                         value={form.responsavel_cargo}
                         onChange={e => update('responsavel_cargo', e.target.value)}
                         placeholder="Diretor"
-                        className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                       />
                     </div>
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-slate-400">E-mail do responsável</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">E-mail do responsável</label>
                     <input
                       type="email"
                       value={form.responsavel_email}
                       onChange={e => update('responsavel_email', e.target.value)}
                       placeholder="joao@empresa.com.br"
-                      className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                      className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                     />
                   </div>
                 </div>
@@ -604,11 +604,11 @@ export default function EmpresasPage() {
               {/* Avaliador responsável */}
               {avaliadores.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Avaliador responsável</p>
+                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Avaliador responsável</p>
                   <select
                     value={form.avaliador_responsavel}
                     onChange={e => update('avaliador_responsavel', e.target.value)}
-                    className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm focus:outline-none focus:border-[#185FA5] transition"
+                    className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
                   >
                     <option value="">Selecionar avaliador</option>
                     {avaliadores.map(a => (
@@ -622,14 +622,14 @@ export default function EmpresasPage() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-3 border border-[#2a2d4a] text-slate-400 hover:text-white rounded-xl text-sm transition"
+                  className="flex-1 py-3 border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl text-sm transition"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex-1 py-3 bg-[#185FA5] hover:bg-[#1a6bbf] disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[var(--brand)] hover:bg-[var(--brand-hover)] disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2"
                 >
                   {saving
                     ? <><Loader2 size={16} className="animate-spin" /> Salvando...</>

@@ -87,44 +87,44 @@ export default function MasterPage() {
   }
 
   const planColors: Record<string, string> = {
-    free:       'bg-slate-700 text-slate-300',
+    free:       'bg-slate-700 text-[var(--text-primary)]',
     pro:        'bg-blue-900 text-blue-300',
     enterprise: 'bg-purple-900 text-purple-300',
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-[#185FA5] border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-400 text-sm">Carregando painel master...</p>
+          <div className="w-10 h-10 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" />
+          <p className="text-[var(--text-secondary)] text-sm">Carregando painel master...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1117]">
+    <div className="min-h-screen bg-[var(--bg-primary)]">
 
       {/* Header */}
-      <header className="bg-[#16192a] border-b border-[#2a2d4a] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#185FA5] rounded-xl flex items-center justify-center">
+          <div className="w-9 h-9 bg-[var(--brand)] rounded-xl flex items-center justify-center">
             <ShieldCheck size={20} color="#E6F1FB" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white">Vistoria NR 18</h1>
-            <p className="text-xs text-slate-500">Painel Master</p>
+            <h1 className="text-sm font-bold text-[var(--text-primary)]">Vistoria NR 18</h1>
+            <p className="text-xs text-[var(--text-muted)]">Painel Master</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-400 hidden sm:block">{masterName}</span>
+          <span className="text-xs text-[var(--text-secondary)] hidden sm:block">{masterName}</span>
           <span className="text-xs px-2 py-1 bg-purple-900/50 text-purple-300 rounded-lg border border-purple-800">
             Master Admin
           </span>
           <button
             onClick={handleLogout}
-            className="p-2 text-slate-500 hover:text-red-400 transition"
+            className="p-2 text-[var(--text-muted)] hover:text-red-400 transition"
             title="Sair"
           >
             <LogOut size={18} />
@@ -136,10 +136,10 @@ export default function MasterPage() {
 
         {/* Boas-vindas */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white">
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">
             Olá, {masterName.split(' ')[0]} 👋
           </h2>
-          <p className="text-slate-400 mt-1">
+          <p className="text-[var(--text-secondary)] mt-1">
             Visão geral de todas as consultorias do sistema
           </p>
         </div>
@@ -154,10 +154,10 @@ export default function MasterPage() {
               { label: 'Obras',         value: stats.total_obras,          icon: TrendingUp,  color: 'text-amber-400'  },
               { label: 'Vistorias',     value: stats.total_vistorias,      icon: FileText,    color: 'text-cyan-400'   },
             ].map((s, i) => (
-              <div key={i} className="bg-[#16192a] border border-[#2a2d4a] rounded-2xl p-4">
+              <div key={i} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-4">
                 <s.icon size={20} className={s.color} />
-                <div className="text-2xl font-bold text-white mt-2">{s.value}</div>
-                <div className="text-xs text-slate-500 mt-0.5">{s.label}</div>
+                <div className="text-2xl font-bold text-[var(--text-primary)] mt-2">{s.value}</div>
+                <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.label}</div>
               </div>
             ))}
           </div>
@@ -167,44 +167,44 @@ export default function MasterPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
           <button
             onClick={() => router.push('/master/consultorias')}
-            className="bg-[#16192a] border border-[#2a2d4a] hover:border-[#185FA5]/50 rounded-2xl p-5 flex items-center gap-4 transition group text-left"
+            className="bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--brand)]/50 rounded-2xl p-5 flex items-center gap-4 transition group text-left"
           >
-            <div className="w-12 h-12 bg-blue-900/30 border border-blue-800/50 rounded-xl flex items-center justify-center group-hover:bg-[#185FA5]/20 transition">
+            <div className="w-12 h-12 bg-blue-900/30 border border-blue-800/50 rounded-xl flex items-center justify-center group-hover:bg-[var(--brand)]/20 transition">
               <Building2 size={22} className="text-blue-400" />
             </div>
             <div className="flex-1">
-              <div className="font-semibold text-white">Consultorias</div>
-              <div className="text-xs text-slate-500 mt-0.5">
+              <div className="font-semibold text-[var(--text-primary)]">Consultorias</div>
+              <div className="text-xs text-[var(--text-muted)] mt-0.5">
                 {stats?.total_consultorias || 0} cadastradas · Gerenciar planos e acesso
               </div>
             </div>
-            <ChevronRight size={18} className="text-slate-600 group-hover:text-slate-400 transition" />
+            <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] transition" />
           </button>
 
           <button
             onClick={() => router.push('/master/avaliadores')}
-            className="bg-[#16192a] border border-[#2a2d4a] hover:border-[#185FA5]/50 rounded-2xl p-5 flex items-center gap-4 transition group text-left"
+            className="bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--brand)]/50 rounded-2xl p-5 flex items-center gap-4 transition group text-left"
           >
             <div className="w-12 h-12 bg-purple-900/30 border border-purple-800/50 rounded-xl flex items-center justify-center group-hover:bg-purple-900/40 transition">
               <UserCog size={22} className="text-purple-400" />
             </div>
             <div className="flex-1">
-              <div className="font-semibold text-white">Avaliadores</div>
-              <div className="text-xs text-slate-500 mt-0.5">
+              <div className="font-semibold text-[var(--text-primary)]">Avaliadores</div>
+              <div className="text-xs text-[var(--text-muted)] mt-0.5">
                 {stats?.total_avaliadores || 0} cadastrados · Gerenciar técnicos e acessos
               </div>
             </div>
-            <ChevronRight size={18} className="text-slate-600 group-hover:text-slate-400 transition" />
+            <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] transition" />
           </button>
         </div>
 
         {/* Lista de consultorias */}
-        <div className="bg-[#16192a] border border-[#2a2d4a] rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-[#2a2d4a] flex items-center justify-between">
-            <h3 className="font-semibold text-white">Consultorias cadastradas</h3>
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between">
+            <h3 className="font-semibold text-[var(--text-primary)]">Consultorias cadastradas</h3>
             <button
               onClick={() => router.push('/master/consultorias')}
-              className="flex items-center gap-2 px-4 py-2 bg-[#185FA5] hover:bg-[#1a6bbf] text-white text-sm font-medium rounded-xl transition"
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white text-sm font-medium rounded-xl transition"
             >
               <Plus size={15} />
               Nova consultoria
@@ -214,30 +214,30 @@ export default function MasterPage() {
           {consultorias.length === 0 ? (
             <div className="py-16 text-center">
               <Building2 size={40} className="text-slate-700 mx-auto mb-3" />
-              <p className="text-slate-500 text-sm">Nenhuma consultoria cadastrada ainda</p>
+              <p className="text-[var(--text-muted)] text-sm">Nenhuma consultoria cadastrada ainda</p>
               <button
                 onClick={() => router.push('/master/consultorias')}
-                className="mt-4 px-4 py-2 bg-[#185FA5] text-white text-sm rounded-xl hover:bg-[#1a6bbf] transition"
+                className="mt-4 px-4 py-2 bg-[var(--brand)] text-white text-sm rounded-xl hover:bg-[var(--brand-hover)] transition"
               >
                 Cadastrar primeira consultoria
               </button>
             </div>
           ) : (
-            <div className="divide-y divide-[#2a2d4a]">
+            <div className="divide-y divide-[var(--border)]">
               {consultorias.map(c => (
                 <div
                   key={c.id}
                   onClick={() => router.push('/master/consultorias')}
-                  className="px-6 py-4 flex items-center gap-4 hover:bg-[#1a1d2e] transition cursor-pointer"
+                  className="px-6 py-4 flex items-center gap-4 hover:bg-[var(--bg-elevated)] transition cursor-pointer"
                 >
-                  <div className="w-10 h-10 bg-[#185FA5]/20 border border-[#185FA5]/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-bold text-[#185FA5]">
+                  <div className="w-10 h-10 bg-[var(--brand)]/20 border border-[var(--brand)]/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-bold text-[var(--brand)]">
                       {c.name.slice(0, 2).toUpperCase()}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-white text-sm">{c.name}</span>
+                      <span className="font-medium text-[var(--text-primary)] text-sm">{c.name}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${planColors[c.plan] || planColors.free}`}>
                         {c.plan}
                       </span>
@@ -246,9 +246,9 @@ export default function MasterPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-3 mt-0.5">
-                      <span className="text-xs text-slate-500">{c.cnpj || 'CNPJ não informado'}</span>
-                      <span className="text-xs text-slate-600">·</span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-[var(--text-muted)]">{c.cnpj || 'CNPJ não informado'}</span>
+                      <span className="text-xs text-[var(--text-muted)]">·</span>
+                      <span className="text-xs text-[var(--text-muted)]">
                         {c.plan === 'enterprise' ? 'Ilimitado' : `${c.max_avaliadores} aval. · ${c.max_empresas} emp.`}
                       </span>
                     </div>
@@ -258,7 +258,7 @@ export default function MasterPage() {
                       ? <CheckCircle size={16} className="text-green-400" />
                       : <AlertCircle size={16} className="text-red-400" />
                     }
-                    <ChevronRight size={16} className="text-slate-600" />
+                    <ChevronRight size={16} className="text-[var(--text-muted)]" />
                   </div>
                 </div>
               ))}

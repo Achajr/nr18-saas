@@ -185,26 +185,26 @@ export default function NovaVistoriaPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-[#185FA5] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1117]">
+    <div className="min-h-screen bg-[var(--bg-primary)]">
 
       {/* Header */}
-      <header className="bg-[#16192a] border-b border-[#2a2d4a] px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
         <button
           onClick={() => step === 'empresa' ? router.push('/dashboard') : setStep(step === 'obra' ? 'empresa' : 'obra')}
-          className="p-2 text-slate-400 hover:text-white transition"
+          className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
         >
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-sm font-bold text-white">Nova Vistoria NR 18</h1>
-          <p className="text-xs text-slate-500">
+          <h1 className="text-sm font-bold text-[var(--text-primary)]">Nova Vistoria NR 18</h1>
+          <p className="text-xs text-[var(--text-muted)]">
             {step === 'empresa' ? 'Selecione a empresa' : step === 'obra' ? 'Selecione a obra' : 'Dados da vistoria'}
           </p>
         </div>
@@ -215,9 +215,9 @@ export default function NovaVistoriaPage() {
             <div
               key={s}
               className={`w-2 h-2 rounded-full transition ${
-                step === s ? 'bg-[#185FA5]' :
+                step === s ? 'bg-[var(--brand)]' :
                 ['empresa', 'obra', 'dados'].indexOf(step) > i ? 'bg-green-500' :
-                'bg-[#2a2d4a]'
+                'bg-[var(--border)]'
               }`}
             />
           ))}
@@ -229,25 +229,25 @@ export default function NovaVistoriaPage() {
         {/* STEP 1 — Empresa */}
         {step === 'empresa' && (
           <div>
-            <h2 className="text-lg font-bold text-white mb-1">Qual empresa será vistoriada?</h2>
-            <p className="text-slate-400 text-sm mb-4">Selecione a empresa cliente</p>
+            <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">Qual empresa será vistoriada?</h2>
+            <p className="text-[var(--text-secondary)] text-sm mb-4">Selecione a empresa cliente</p>
 
             {/* Busca */}
             <div className="relative mb-4">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Buscar empresa..."
-                className="w-full pl-9 pr-4 py-3 bg-[#16192a] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                className="w-full pl-9 pr-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
               />
             </div>
 
             {empresasFiltradas.length === 0 ? (
               <div className="text-center py-12">
                 <Building2 size={36} className="text-slate-700 mx-auto mb-3" />
-                <p className="text-slate-500 text-sm">Nenhuma empresa encontrada</p>
+                <p className="text-[var(--text-muted)] text-sm">Nenhuma empresa encontrada</p>
               </div>
             ) : (
               <div className="flex flex-col gap-2">
@@ -255,16 +255,16 @@ export default function NovaVistoriaPage() {
                   <button
                     key={e.id}
                     onClick={() => selectEmpresa(e)}
-                    className="bg-[#16192a] border border-[#2a2d4a] hover:border-[#185FA5]/50 rounded-2xl p-4 flex items-center gap-3 transition text-left w-full"
+                    className="bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--brand)]/50 rounded-2xl p-4 flex items-center gap-3 transition text-left w-full"
                   >
-                    <div className="w-10 h-10 bg-[#185FA5]/20 border border-[#185FA5]/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-bold text-[#185FA5]">
+                    <div className="w-10 h-10 bg-[var(--brand)]/20 border border-[var(--brand)]/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-bold text-[var(--brand)]">
                         {e.name.slice(0, 2).toUpperCase()}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-white text-sm truncate">{e.name}</span>
+                        <span className="font-medium text-[var(--text-primary)] text-sm truncate">{e.name}</span>
                         {e.grau_risco && (
                           <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${grauColors[e.grau_risco]}`}>
                             Grau {e.grau_risco}
@@ -272,15 +272,15 @@ export default function NovaVistoriaPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {e.cnpj && <span className="text-xs text-slate-500">{e.cnpj}</span>}
+                        {e.cnpj && <span className="text-xs text-[var(--text-muted)]">{e.cnpj}</span>}
                         {e.cidade && (
-                          <span className="text-xs text-slate-500 flex items-center gap-1">
+                          <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
                             <MapPin size={10} /> {e.cidade}/{e.uf}
                           </span>
                         )}
                       </div>
                     </div>
-                    <ChevronRight size={16} className="text-slate-600 flex-shrink-0" />
+                    <ChevronRight size={16} className="text-[var(--text-muted)] flex-shrink-0" />
                   </button>
                 ))}
               </div>
@@ -292,49 +292,49 @@ export default function NovaVistoriaPage() {
         {step === 'obra' && selectedEmpresa && (
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs text-slate-500">Empresa:</span>
-              <span className="text-xs font-medium text-[#185FA5]">{selectedEmpresa.name}</span>
+              <span className="text-xs text-[var(--text-muted)]">Empresa:</span>
+              <span className="text-xs font-medium text-[var(--brand)]">{selectedEmpresa.name}</span>
             </div>
-            <h2 className="text-lg font-bold text-white mb-1">Qual obra será vistoriada?</h2>
-            <p className="text-slate-400 text-sm mb-4">Selecione uma obra existente ou crie uma nova</p>
+            <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">Qual obra será vistoriada?</h2>
+            <p className="text-[var(--text-secondary)] text-sm mb-4">Selecione uma obra existente ou crie uma nova</p>
 
             <div className="flex flex-col gap-2 mb-4">
               {obras.map(o => (
                 <button
                   key={o.id}
                   onClick={() => { setSelectedObra(o); setStep('dados') }}
-                  className={`bg-[#16192a] border rounded-2xl p-4 flex items-center gap-3 transition text-left w-full ${
+                  className={`bg-[var(--bg-surface)] border rounded-2xl p-4 flex items-center gap-3 transition text-left w-full ${
                     selectedObra?.id === o.id
-                      ? 'border-[#185FA5] bg-[#185FA5]/5'
-                      : 'border-[#2a2d4a] hover:border-[#185FA5]/50'
+                      ? 'border-[var(--brand)] bg-[var(--brand)]/5'
+                      : 'border-[var(--border)] hover:border-[var(--brand)]/50'
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-white text-sm">{o.name}</div>
+                    <div className="font-medium text-[var(--text-primary)] text-sm">{o.name}</div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      {o.etapa && <span className="text-xs text-slate-500">{o.etapa}</span>}
+                      {o.etapa && <span className="text-xs text-[var(--text-muted)]">{o.etapa}</span>}
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         o.status === 'ativa' ? 'bg-green-900/40 text-green-400' :
                         o.status === 'concluida' ? 'bg-blue-900/40 text-blue-400' :
-                        'bg-slate-700 text-slate-400'
+                        'bg-slate-700 text-[var(--text-secondary)]'
                       }`}>{o.status}</span>
                     </div>
                   </div>
-                  <ChevronRight size={16} className="text-slate-600 flex-shrink-0" />
+                  <ChevronRight size={16} className="text-[var(--text-muted)] flex-shrink-0" />
                 </button>
               ))}
             </div>
 
             {/* Criar nova obra */}
             {criandoObra ? (
-              <div className="bg-[#16192a] border border-[#185FA5]/50 rounded-2xl p-4">
-                <p className="text-sm font-medium text-white mb-3">Nova obra</p>
+              <div className="bg-[var(--bg-surface)] border border-[var(--brand)]/50 rounded-2xl p-4">
+                <p className="text-sm font-medium text-[var(--text-primary)] mb-3">Nova obra</p>
                 <input
                   type="text"
                   value={novaObraNome}
                   onChange={e => setNovaObraNome(e.target.value)}
                   placeholder="Nome da obra"
-                  className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition mb-3"
+                  className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition mb-3"
                   autoFocus
                 />
                 <input
@@ -343,19 +343,19 @@ export default function NovaVistoriaPage() {
                   onChange={e => setNovaObraFuncionarios(e.target.value)}
                   placeholder="Número de funcionários na obra"
                   min="1"
-                  className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition mb-3"
+                  className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition mb-3"
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={() => setCriandoObra(false)}
-                    className="flex-1 py-2.5 border border-[#2a2d4a] text-slate-400 rounded-xl text-sm transition hover:text-white"
+                    className="flex-1 py-2.5 border border-[var(--border)] text-[var(--text-secondary)] rounded-xl text-sm transition hover:text-[var(--text-primary)]"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={criarObra}
                     disabled={saving}
-                    className="flex-1 py-2.5 bg-[#185FA5] text-white font-medium rounded-xl text-sm transition hover:bg-[#1a6bbf] flex items-center justify-center gap-2"
+                    className="flex-1 py-2.5 bg-[var(--brand)] text-white font-medium rounded-xl text-sm transition hover:bg-[var(--brand-hover)] flex items-center justify-center gap-2"
                   >
                     {saving ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
                     Criar obra
@@ -365,7 +365,7 @@ export default function NovaVistoriaPage() {
             ) : (
               <button
                 onClick={() => setCriandoObra(true)}
-                className="w-full py-3 border border-dashed border-[#2a2d4a] hover:border-[#185FA5]/50 text-slate-400 hover:text-white rounded-2xl text-sm transition flex items-center justify-center gap-2"
+                className="w-full py-3 border border-dashed border-[var(--border)] hover:border-[var(--brand)]/50 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-2xl text-sm transition flex items-center justify-center gap-2"
               >
                 <Plus size={16} />
                 Criar nova obra
@@ -378,41 +378,41 @@ export default function NovaVistoriaPage() {
         {step === 'dados' && selectedObra && (
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs text-slate-500">Obra:</span>
-              <span className="text-xs font-medium text-[#185FA5]">{selectedObra.name}</span>
+              <span className="text-xs text-[var(--text-muted)]">Obra:</span>
+              <span className="text-xs font-medium text-[var(--brand)]">{selectedObra.name}</span>
             </div>
-            <h2 className="text-lg font-bold text-white mb-1">Dados da vistoria</h2>
-            <p className="text-slate-400 text-sm mb-5">Confirme as informações antes de iniciar</p>
+            <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">Dados da vistoria</h2>
+            <p className="text-[var(--text-secondary)] text-sm mb-5">Confirme as informações antes de iniciar</p>
 
             <div className="flex flex-col gap-4">
 
               <div className="flex gap-3">
                 <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-xs font-medium text-slate-400">Nº da vistoria</label>
+                  <label className="text-xs font-medium text-[var(--text-secondary)]">Nº da vistoria</label>
                   <input
                     type="text"
                     value={dados.numero}
                     onChange={e => setDados(d => ({ ...d, numero: e.target.value }))}
-                    className="w-full px-4 py-3 bg-[#16192a] border border-[#2a2d4a] rounded-xl text-white text-sm focus:outline-none focus:border-[#185FA5] transition"
+                    className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-xs font-medium text-slate-400">Data</label>
+                  <label className="text-xs font-medium text-[var(--text-secondary)]">Data</label>
                   <input
                     type="date"
                     value={dados.data_vistoria}
                     onChange={e => setDados(d => ({ ...d, data_vistoria: e.target.value }))}
-                    className="w-full px-4 py-3 bg-[#16192a] border border-[#2a2d4a] rounded-xl text-white text-sm focus:outline-none focus:border-[#185FA5] transition"
+                    className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
                   />
                 </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-400">Condições climáticas</label>
+                <label className="text-xs font-medium text-[var(--text-secondary)]">Condições climáticas</label>
                 <select
                   value={dados.clima}
                   onChange={e => setDados(d => ({ ...d, clima: e.target.value }))}
-                  className="w-full px-4 py-3 bg-[#16192a] border border-[#2a2d4a] rounded-xl text-white text-sm focus:outline-none focus:border-[#185FA5] transition"
+                  className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
                 >
                   <option>Bom / ensolarado</option>
                   <option>Nublado</option>
@@ -423,11 +423,11 @@ export default function NovaVistoriaPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-400">Etapa atual da obra</label>
+                <label className="text-xs font-medium text-[var(--text-secondary)]">Etapa atual da obra</label>
                 <select
                   value={dados.etapa_obra}
                   onChange={e => setDados(d => ({ ...d, etapa_obra: e.target.value }))}
-                  className="w-full px-4 py-3 bg-[#16192a] border border-[#2a2d4a] rounded-xl text-white text-sm focus:outline-none focus:border-[#185FA5] transition"
+                  className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
                 >
                   <option value="">Selecione</option>
                   <option>Terraplanagem</option>
@@ -446,20 +446,20 @@ export default function NovaVistoriaPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-400">Observações iniciais</label>
+                <label className="text-xs font-medium text-[var(--text-secondary)]">Observações iniciais</label>
                 <textarea
                   value={dados.observacoes_gerais}
                   onChange={e => setDados(d => ({ ...d, observacoes_gerais: e.target.value }))}
                   placeholder="Condições gerais observadas, atividades em andamento..."
                   rows={3}
-                  className="w-full px-4 py-3 bg-[#16192a] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition resize-none"
+                  className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition resize-none"
                 />
               </div>
 
               <button
                 onClick={iniciarVistoria}
                 disabled={saving}
-                className="w-full py-4 bg-[#185FA5] hover:bg-[#1a6bbf] disabled:opacity-50 text-white font-semibold rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30"
+                className="w-full py-4 bg-[var(--brand)] hover:bg-[var(--brand-hover)] disabled:opacity-50 text-white font-semibold rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-[var(--brand-muted)]"
               >
                 {saving ? (
                   <><Loader2 size={18} className="animate-spin" /> Iniciando...</>

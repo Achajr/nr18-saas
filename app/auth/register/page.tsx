@@ -103,46 +103,46 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1117] flex flex-col items-center justify-center p-4 py-10">
+    <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col items-center justify-center p-4 py-10">
 
       {/* Logo */}
       <div className="mb-6 flex flex-col items-center gap-3">
-        <div className="w-14 h-14 bg-[#185FA5] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/40">
+        <div className="w-14 h-14 bg-[var(--brand)] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/40">
           <ShieldCheck size={28} color="#E6F1FB" />
         </div>
         <div className="text-center">
-          <h1 className="text-xl font-bold text-white">Vistoria NR 18</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Criar sua conta</p>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">Vistoria NR 18</h1>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Criar sua conta</p>
         </div>
       </div>
 
       {/* Card */}
-      <div className="w-full max-w-sm bg-[#16192a] border border-[#2a2d4a] rounded-2xl p-8 shadow-2xl">
+      <div className="w-full max-w-sm bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-8 shadow-2xl">
         <form onSubmit={handleRegister} className="flex flex-col gap-5">
 
           {/* ── DADOS PESSOAIS ── */}
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Seus dados</p>
+            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Seus dados</p>
             <div className="flex flex-col gap-3">
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-400">Nome completo *</label>
+                <label className="text-xs font-medium text-[var(--text-secondary)]">Nome completo *</label>
                 <input
                   type="text"
                   value={form.full_name}
                   onChange={e => update('full_name', e.target.value)}
                   placeholder="Ex: Carlos Henrique Borges"
-                  className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                  className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                 />
               </div>
 
               {/* Função */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-400">Função *</label>
+                <label className="text-xs font-medium text-[var(--text-secondary)]">Função *</label>
                 <select
                   value={role}
                   onChange={e => setRole(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm focus:outline-none focus:border-[#185FA5] transition"
+                  className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
                 >
                   {ROLES.map(r => (
                     <option key={r.value} value={r.value}>{r.label}</option>
@@ -153,39 +153,39 @@ export default function RegisterPage() {
               {/* Registro MTE — só para TST */}
               {precisaMTE && (
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-slate-400">
+                  <label className="text-xs font-medium text-[var(--text-secondary)]">
                     Registro MTE
-                    <span className="text-slate-600 ml-1">(Técnico de Segurança)</span>
+                    <span className="text-[var(--text-muted)] ml-1">(Técnico de Segurança)</span>
                   </label>
-                  <div className="flex gap-2 items-center bg-[#0f1117] border border-[#2a2d4a] rounded-xl px-4 py-3 focus-within:border-[#185FA5] transition">
-                    <span className="text-slate-500 text-sm font-mono whitespace-nowrap">MTE</span>
-                    <div className="w-px h-4 bg-[#2a2d4a]" />
+                  <div className="flex gap-2 items-center bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 focus-within:border-[var(--brand)] transition">
+                    <span className="text-[var(--text-muted)] text-sm font-mono whitespace-nowrap">MTE</span>
+                    <div className="w-px h-4 bg-[var(--border)]" />
                     <input
                       type="text"
                       value={form.registro_mte}
                       onChange={e => update('registro_mte', e.target.value)}
                       placeholder="12.048/MG"
-                      className="flex-1 bg-transparent text-white text-sm placeholder:text-slate-600 focus:outline-none"
+                      className="flex-1 bg-transparent text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none"
                     />
                   </div>
-                  <p className="text-xs text-slate-600">Ex: MTE 12.048/MG</p>
+                  <p className="text-xs text-[var(--text-muted)]">Ex: MTE 12.048/MG</p>
                 </div>
               )}
 
               {/* CREA — só para Engenheiro */}
               {precisaCREA && (
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-slate-400">
+                  <label className="text-xs font-medium text-[var(--text-secondary)]">
                     CREA
-                    <span className="text-slate-600 ml-1">(Engenheiro de Segurança)</span>
+                    <span className="text-[var(--text-muted)] ml-1">(Engenheiro de Segurança)</span>
                   </label>
                   <div className="flex gap-2">
-                    <div className="flex items-center gap-1 bg-[#0f1117] border border-[#2a2d4a] rounded-xl px-3 focus-within:border-[#185FA5] transition">
-                      <span className="text-slate-500 text-sm font-mono whitespace-nowrap">CREA-</span>
+                    <div className="flex items-center gap-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-3 focus-within:border-[var(--brand)] transition">
+                      <span className="text-[var(--text-muted)] text-sm font-mono whitespace-nowrap">CREA-</span>
                       <select
                         value={creaEstado}
                         onChange={e => setCreaEstado(e.target.value)}
-                        className="bg-transparent text-white text-sm focus:outline-none py-3 cursor-pointer"
+                        className="bg-transparent text-[var(--text-primary)] text-sm focus:outline-none py-3 cursor-pointer"
                       >
                         {ESTADOS.map(uf => (
                           <option key={uf} value={uf}>{uf}</option>
@@ -197,18 +197,18 @@ export default function RegisterPage() {
                       value={form.crea_numero}
                       onChange={e => update('crea_numero', e.target.value)}
                       placeholder="145.832"
-                      className="flex-1 px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                      className="flex-1 px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                     />
                   </div>
-                  <p className="text-xs text-slate-600">Ex: CREA-ES 145.832</p>
+                  <p className="text-xs text-[var(--text-muted)]">Ex: CREA-ES 145.832</p>
                 </div>
               )}
 
               {/* Estagiário — aviso informativo */}
               {role === 'estagiario' && (
-                <div className="flex items-start gap-2 bg-[#185FA5]/10 border border-[#185FA5]/30 rounded-xl px-4 py-3">
-                  <span className="text-[#185FA5] text-lg leading-none mt-0.5">ℹ</span>
-                  <p className="text-xs text-slate-400 leading-relaxed">
+                <div className="flex items-start gap-2 bg-[var(--brand)]/10 border border-[var(--brand)]/30 rounded-xl px-4 py-3">
+                  <span className="text-[var(--brand)] text-lg leading-none mt-0.5">ℹ</span>
+                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                     Estagiários podem realizar e salvar vistorias, mas o relatório final deve ser
                     revisado e assinado por um Técnico ou Engenheiro de Segurança responsável.
                   </p>
@@ -220,26 +220,26 @@ export default function RegisterPage() {
 
           {/* ── DADOS DA EMPRESA ── */}
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Sua empresa</p>
+            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Sua empresa</p>
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-400">Nome da empresa *</label>
+                <label className="text-xs font-medium text-[var(--text-secondary)]">Nome da empresa *</label>
                 <input
                   type="text"
                   value={form.org_name}
                   onChange={e => update('org_name', e.target.value)}
                   placeholder="Construtora Horizonte Ltda"
-                  className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                  className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-400">CNPJ</label>
+                <label className="text-xs font-medium text-[var(--text-secondary)]">CNPJ</label>
                 <input
                   type="text"
                   value={form.org_cnpj}
                   onChange={e => update('org_cnpj', e.target.value)}
                   placeholder="00.000.000/0000-00"
-                  className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                  className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                 />
               </div>
             </div>
@@ -247,32 +247,32 @@ export default function RegisterPage() {
 
           {/* ── ACESSO ── */}
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Acesso</p>
+            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Acesso</p>
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-400">E-mail *</label>
+                <label className="text-xs font-medium text-[var(--text-secondary)]">E-mail *</label>
                 <input
                   type="email"
                   value={form.email}
                   onChange={e => update('email', e.target.value)}
                   placeholder="seu@email.com"
-                  className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition"
+                  className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-400">Senha *</label>
+                <label className="text-xs font-medium text-[var(--text-secondary)]">Senha *</label>
                 <div className="relative">
                   <input
                     type={showPass ? 'text' : 'password'}
                     value={form.password}
                     onChange={e => update('password', e.target.value)}
                     placeholder="Mínimo 6 caracteres"
-                    className="w-full px-4 py-3 bg-[#0f1117] border border-[#2a2d4a] rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#185FA5] transition pr-11"
+                    className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition pr-11"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPass(!showPass)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
                   >
                     {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -284,7 +284,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-[#185FA5] hover:bg-[#1a6bbf] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 mt-1"
+            className="w-full py-3 bg-[var(--brand)] hover:bg-[var(--brand-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 mt-1"
           >
             {loading ? (
               <>
@@ -298,15 +298,15 @@ export default function RegisterPage() {
 
         </form>
 
-        <p className="text-center text-sm text-slate-500 mt-6">
+        <p className="text-center text-sm text-[var(--text-muted)] mt-6">
           Já tem conta?{' '}
-          <a href="/auth/login" className="text-[#185FA5] hover:text-blue-400 font-medium transition">
+          <a href="/auth/login" className="text-[var(--brand)] hover:text-blue-400 font-medium transition">
             Entrar
           </a>
         </p>
       </div>
 
-      <p className="mt-6 text-xs text-slate-600">NR 18 · Portaria MTE nº 836/2026</p>
+      <p className="mt-6 text-xs text-[var(--text-muted)]">NR 18 · Portaria MTE nº 836/2026</p>
     </div>
   )
 }

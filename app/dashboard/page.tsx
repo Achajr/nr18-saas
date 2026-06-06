@@ -127,38 +127,38 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-[#185FA5] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1117]">
+    <div className="min-h-screen bg-[var(--bg-primary)]">
 
       {/* Header */}
-      <header className="bg-[#16192a] border-b border-[#2a2d4a] px-4 py-4 flex items-center justify-between sticky top-0 z-10">
+      <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-4 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#185FA5] rounded-xl flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 bg-[var(--brand)] rounded-xl flex items-center justify-center flex-shrink-0">
             <ShieldCheck size={20} color="#E6F1FB" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white">Vistoria NR 18</h1>
-            <p className="text-xs text-slate-500 truncate max-w-[160px]">
+            <h1 className="text-sm font-bold text-[var(--text-primary)]">Vistoria NR 18</h1>
+            <p className="text-xs text-[var(--text-muted)] truncate max-w-[160px]">
               {avaliador?.consultoria?.name}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right hidden sm:block">
-            <div className="text-xs font-medium text-white">{avaliador?.full_name}</div>
-            <div className="text-xs text-slate-500">
+            <div className="text-xs font-medium text-[var(--text-primary)]">{avaliador?.full_name}</div>
+            <div className="text-xs text-[var(--text-muted)]">
               {avaliador?.registro_mte ? `MTE ${avaliador.registro_mte}` : avaliador?.crea || ''}
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="p-2 text-slate-500 hover:text-red-400 transition"
+            className="p-2 text-[var(--text-muted)] hover:text-red-400 transition"
           >
             <LogOut size={18} />
           </button>
@@ -169,10 +169,10 @@ export default function DashboardPage() {
 
         {/* Boas-vindas */}
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-white">
+          <h2 className="text-xl font-bold text-[var(--text-primary)]">
             Olá, {avaliador?.full_name?.split(' ')[0]} 👋
           </h2>
-          <p className="text-slate-400 text-sm mt-0.5">
+          <p className="text-[var(--text-secondary)] text-sm mt-0.5">
             {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
@@ -186,10 +186,10 @@ export default function DashboardPage() {
               { label: 'Este mês',      value: stats.vistorias_mes,   icon: TrendingUp,  color: 'text-green-400'  },
               { label: 'NCs abertas',   value: stats.ncs_abertas,     icon: AlertCircle, color: 'text-amber-400'  },
             ].map((s, i) => (
-              <div key={i} className="bg-[#16192a] border border-[#2a2d4a] rounded-2xl p-4">
+              <div key={i} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-4">
                 <s.icon size={18} className={s.color} />
-                <div className="text-2xl font-bold text-white mt-2">{s.value}</div>
-                <div className="text-xs text-slate-500 mt-0.5">{s.label}</div>
+                <div className="text-2xl font-bold text-[var(--text-primary)] mt-2">{s.value}</div>
+                <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.label}</div>
               </div>
             ))}
           </div>
@@ -198,7 +198,7 @@ export default function DashboardPage() {
         {/* Botão nova vistoria */}
         <button
           onClick={() => router.push('/dashboard/obras/nova')}
-          className="w-full py-4 bg-[#185FA5] hover:bg-[#1a6bbf] text-white font-semibold rounded-2xl transition flex items-center justify-center gap-3 mb-6 shadow-lg shadow-blue-900/30"
+          className="w-full py-4 bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white font-semibold rounded-2xl transition flex items-center justify-center gap-3 mb-6 shadow-lg shadow-[var(--brand-muted)]"
         >
           <Plus size={20} />
           Nova vistoria NR 18
@@ -208,38 +208,38 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 gap-3 mb-6">
           <button
             onClick={() => router.push('/dashboard/empresas')}
-            className="bg-[#16192a] border border-[#2a2d4a] hover:border-[#185FA5]/50 rounded-2xl p-4 flex items-center gap-3 transition group text-left"
+            className="bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--brand)]/50 rounded-2xl p-4 flex items-center gap-3 transition group text-left"
           >
             <div className="w-10 h-10 bg-blue-900/30 rounded-xl flex items-center justify-center group-hover:bg-blue-900/50 transition">
               <Building2 size={18} className="text-blue-400" />
             </div>
             <div>
-              <div className="font-medium text-white text-sm">Empresas</div>
-              <div className="text-xs text-slate-500">{stats?.total_empresas || 0} ativas</div>
+              <div className="font-medium text-[var(--text-primary)] text-sm">Empresas</div>
+              <div className="text-xs text-[var(--text-muted)]">{stats?.total_empresas || 0} ativas</div>
             </div>
           </button>
 
           <button
             onClick={() => router.push('/dashboard/relatorios')}
-            className="bg-[#16192a] border border-[#2a2d4a] hover:border-[#185FA5]/50 rounded-2xl p-4 flex items-center gap-3 transition group text-left"
+            className="bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--brand)]/50 rounded-2xl p-4 flex items-center gap-3 transition group text-left"
           >
             <div className="w-10 h-10 bg-purple-900/30 rounded-xl flex items-center justify-center group-hover:bg-purple-900/50 transition">
               <FileText size={18} className="text-purple-400" />
             </div>
             <div>
-              <div className="font-medium text-white text-sm">Relatórios</div>
-              <div className="text-xs text-slate-500">{stats?.total_vistorias || 0} vistorias</div>
+              <div className="font-medium text-[var(--text-primary)] text-sm">Relatórios</div>
+              <div className="text-xs text-[var(--text-muted)]">{stats?.total_vistorias || 0} vistorias</div>
             </div>
           </button>
         </div>
 
         {/* Últimas vistorias */}
-        <div className="bg-[#16192a] border border-[#2a2d4a] rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#2a2d4a] flex items-center justify-between">
-            <h3 className="font-semibold text-white text-sm">Últimas vistorias</h3>
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
+            <h3 className="font-semibold text-[var(--text-primary)] text-sm">Últimas vistorias</h3>
             <button
               onClick={() => router.push('/dashboard/relatorios')}
-              className="text-xs text-[#185FA5] hover:text-blue-400 transition"
+              className="text-xs text-[var(--brand)] hover:text-blue-400 transition"
             >
               Ver todas
             </button>
@@ -248,25 +248,25 @@ export default function DashboardPage() {
           {vistorias.length === 0 ? (
             <div className="py-12 text-center">
               <Clock size={32} className="text-slate-700 mx-auto mb-3" />
-              <p className="text-slate-500 text-sm">Nenhuma vistoria realizada ainda</p>
+              <p className="text-[var(--text-muted)] text-sm">Nenhuma vistoria realizada ainda</p>
               <button
                 onClick={() => router.push('/dashboard/obras/nova')}
-                className="mt-3 px-4 py-2 bg-[#185FA5] text-white text-sm rounded-xl hover:bg-[#1a6bbf] transition"
+                className="mt-3 px-4 py-2 bg-[var(--brand)] text-white text-sm rounded-xl hover:bg-[var(--brand-hover)] transition"
               >
                 Iniciar primeira vistoria
               </button>
             </div>
           ) : (
-            <div className="divide-y divide-[#2a2d4a]">
+            <div className="divide-y divide-[var(--border)]">
               {vistorias.map(v => (
                 <div
                   key={v.id}
-                  className="px-5 py-4 flex items-center gap-3 hover:bg-[#1a1d2e] transition cursor-pointer"
+                  className="px-5 py-4 flex items-center gap-3 hover:bg-[var(--bg-elevated)] transition cursor-pointer"
                   onClick={() => router.push(`/dashboard/vistorias/${v.id}`)}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-white text-sm">
+                      <span className="font-medium text-[var(--text-primary)] text-sm">
                         {v.obra?.empresa_cliente?.name || v.obra?.name || 'Vistoria ' + v.numero}
                       </span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor[v.status] || statusColor.em_andamento}`}>
@@ -274,20 +274,20 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3 mt-0.5">
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-[var(--text-muted)]">
                         {new Date(v.data_vistoria).toLocaleDateString('pt-BR')}
                       </span>
                       {v.indice_conformidade > 0 && (
                         <>
-                          <span className="text-xs text-slate-600">·</span>
-                          <span className={`text-xs font-medium ${classColor[v.classificacao || ''] || 'text-slate-400'}`}>
+                          <span className="text-xs text-[var(--text-muted)]">·</span>
+                          <span className={`text-xs font-medium ${classColor[v.classificacao || ''] || 'text-[var(--text-secondary)]'}`}>
                             {v.indice_conformidade}% — {v.classificacao}
                           </span>
                         </>
                       )}
                     </div>
                   </div>
-                  <ChevronRight size={16} className="text-slate-600 flex-shrink-0" />
+                  <ChevronRight size={16} className="text-[var(--text-muted)] flex-shrink-0" />
                 </div>
               ))}
             </div>
