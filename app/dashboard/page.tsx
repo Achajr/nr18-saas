@@ -3,10 +3,22 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import {
-  ShieldCheck, Building2, FileText, Plus,
-  LogOut, ChevronRight, Clock, CheckCircle,
-  AlertCircle, TrendingUp
+  Activity,
+  ArrowRight,
+  BadgeCheck,
+  Building2,
+  CalendarDays,
+  ChevronRight,
+  ClipboardCheck,
+  Clock,
+  FileText,
+  HardHat,
+  LogOut,
+  Plus,
+  TrendingUp,
+  AlertCircle
 } from 'lucide-react'
+import BrandLogo from '@/components/BrandLogo'
 
 interface Avaliador {
   id: string
@@ -33,6 +45,35 @@ interface Vistoria {
   indice_conformidade: number
   classificacao: string | null
   obra: { name: string; empresa_cliente: { name: string } | null } | null
+}
+
+interface RawVistoria extends Omit<Vistoria, 'obra'> {
+  obra:
+    | Vistoria['obra']
+    | {
+        name: string
+        empresa_cliente: { name: string }[] | { name: string } | null
+      }[]
+}
+
+function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] || null
+  return value || null
+}
+
+function normalizeVistoria(row: RawVistoria): Vistoria {
+  const obra = firstOrNull(row.obra)
+  const empresaCliente = firstOrNull(obra?.empresa_cliente)
+
+  return {
+    ...row,
+    obra: obra
+      ? {
+          name: obra.name,
+          empresa_cliente: empresaCliente ? { name: empresaCliente.name } : null,
+        }
+      : null,
+  }
 }
 
 export default function DashboardPage() {
@@ -92,7 +133,7 @@ export default function DashboardPage() {
         .eq('avaliador_id', user.id)
         .order('created_at', { ascending: false })
         .limit(5)
-      setVistorias(vists || [])
+      setVistorias(((vists || []) as unknown as RawVistoria[]).map(normalizeVistoria))
 
     } catch (err) {
       console.error(err)
@@ -114,9 +155,9 @@ export default function DashboardPage() {
   }
 
   const statusColor: Record<string, string> = {
-    em_andamento: 'bg-amber-900/40 text-amber-300',
-    concluida:    'bg-green-900/40 text-green-300',
-    assinada:     'bg-blue-900/40 text-blue-300',
+    em_andamento: 'bg-[var(--warning-bg)] text-[var(--warning)]',
+    concluida:    'bg-[var(--success-bg)] text-[var(--success)]',
+    assinada:     'bg-[var(--brand-muted)] text-[var(--brand)]',
   }
 
   const statusLabel: Record<string, string> = {
@@ -133,167 +174,224 @@ export default function DashboardPage() {
     )
   }
 
+  const primeiroNome = avaliador?.full_name?.split(' ')[0] || 'Avaliador'
+  const dataHoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
-
-      {/* Header */}
-      <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-4 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[var(--brand)] rounded-xl flex items-center justify-center flex-shrink-0">
-            <ShieldCheck size={20} color="#E6F1FB" />
+      <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg-surface)]/90 px-4 py-4 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <BrandLogo size="sm" subtitle={avaliador?.consultoria?.name || 'Vistorias e conformidade'} />
           </div>
-          <div>
-            <h1 className="text-sm font-bold text-[var(--text-primary)]">Vistoria NR 18</h1>
-            <p className="text-xs text-[var(--text-muted)] truncate max-w-[160px]">
-              {avaliador?.consultoria?.name}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="text-right hidden sm:block">
-            <div className="text-xs font-medium text-[var(--text-primary)]">{avaliador?.full_name}</div>
-            <div className="text-xs text-[var(--text-muted)]">
-              {avaliador?.registro_mte ? `MTE ${avaliador.registro_mte}` : avaliador?.crea || ''}
+          <div className="flex items-center gap-3">
+            <div className="hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-primary)] px-4 py-2 text-right sm:block">
+              <div className="text-sm font-bold text-[var(--text-primary)]">{avaliador?.full_name}</div>
+              <div className="text-xs text-[var(--text-muted)]">
+                {avaliador?.registro_mte ? `MTE ${avaliador.registro_mte}` : avaliador?.crea || 'Avaliador'}
+              </div>
             </div>
+            <button
+              onClick={handleLogout}
+              className="rounded-2xl border border-[var(--border)] p-3 text-[var(--text-muted)] transition hover:border-red-300 hover:text-red-500"
+              aria-label="Sair"
+            >
+              <LogOut size={19} />
+            </button>
           </div>
-          <button
-            onClick={handleLogout}
-            className="p-2 text-[var(--text-muted)] hover:text-red-400 transition"
-          >
-            <LogOut size={18} />
-          </button>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6">
-
-        {/* Boas-vindas */}
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-[var(--text-primary)]">
-            Olá, {avaliador?.full_name?.split(' ')[0]} 👋
-          </h2>
-          <p className="text-[var(--text-secondary)] text-sm mt-0.5">
-            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
-        </div>
-
-        {/* Stats */}
-        {stats && (
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            {[
-              { label: 'Empresas',      value: stats.total_empresas,  icon: Building2,   color: 'text-blue-400'   },
-              { label: 'Vistorias',     value: stats.total_vistorias, icon: FileText,    color: 'text-purple-400' },
-              { label: 'Este mês',      value: stats.vistorias_mes,   icon: TrendingUp,  color: 'text-green-400'  },
-              { label: 'NCs abertas',   value: stats.ncs_abertas,     icon: AlertCircle, color: 'text-amber-400'  },
-            ].map((s, i) => (
-              <div key={i} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-4">
-                <s.icon size={18} className={s.color} />
-                <div className="text-2xl font-bold text-[var(--text-primary)] mt-2">{s.value}</div>
-                <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.label}</div>
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <section className="grid gap-5 lg:grid-cols-[1.45fr_0.55fr]">
+          <div className="relative overflow-hidden rounded-[30px] border border-[var(--border)] bg-[linear-gradient(135deg,var(--brand),#0f172a)] p-6 text-white shadow-[var(--shadow)] sm:p-8">
+            <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_65%_35%,rgba(255,255,255,0.26),transparent_34%)]" />
+            <div className="relative max-w-3xl">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/12 px-4 py-2 text-sm font-bold text-blue-50">
+                <CalendarDays size={16} />
+                {dataHoje}
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Botão nova vistoria */}
-        <button
-          onClick={() => router.push('/dashboard/obras/nova')}
-          className="w-full py-4 bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white font-semibold rounded-2xl transition flex items-center justify-center gap-3 mb-6 shadow-lg shadow-[var(--brand-muted)]"
-        >
-          <Plus size={20} />
-          Nova vistoria NR 18
-        </button>
-
-        {/* Atalhos */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <button
-            onClick={() => router.push('/dashboard/empresas')}
-            className="bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--brand)]/50 rounded-2xl p-4 flex items-center gap-3 transition group text-left"
-          >
-            <div className="w-10 h-10 bg-blue-900/30 rounded-xl flex items-center justify-center group-hover:bg-blue-900/50 transition">
-              <Building2 size={18} className="text-blue-400" />
-            </div>
-            <div>
-              <div className="font-medium text-[var(--text-primary)] text-sm">Empresas</div>
-              <div className="text-xs text-[var(--text-muted)]">{stats?.total_empresas || 0} ativas</div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => router.push('/dashboard/relatorios')}
-            className="bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--brand)]/50 rounded-2xl p-4 flex items-center gap-3 transition group text-left"
-          >
-            <div className="w-10 h-10 bg-purple-900/30 rounded-xl flex items-center justify-center group-hover:bg-purple-900/50 transition">
-              <FileText size={18} className="text-purple-400" />
-            </div>
-            <div>
-              <div className="font-medium text-[var(--text-primary)] text-sm">Relatórios</div>
-              <div className="text-xs text-[var(--text-muted)]">{stats?.total_vistorias || 0} vistorias</div>
-            </div>
-          </button>
-        </div>
-
-        {/* Últimas vistorias */}
-        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
-            <h3 className="font-semibold text-[var(--text-primary)] text-sm">Últimas vistorias</h3>
-            <button
-              onClick={() => router.push('/dashboard/relatorios')}
-              className="text-xs text-[var(--brand)] hover:text-blue-400 transition"
-            >
-              Ver todas
-            </button>
-          </div>
-
-          {vistorias.length === 0 ? (
-            <div className="py-12 text-center">
-              <Clock size={32} className="text-slate-700 mx-auto mb-3" />
-              <p className="text-[var(--text-muted)] text-sm">Nenhuma vistoria realizada ainda</p>
-              <button
-                onClick={() => router.push('/dashboard/obras/nova')}
-                className="mt-3 px-4 py-2 bg-[var(--brand)] text-white text-sm rounded-xl hover:bg-[var(--brand-hover)] transition"
-              >
-                Iniciar primeira vistoria
-              </button>
-            </div>
-          ) : (
-            <div className="divide-y divide-[var(--border)]">
-              {vistorias.map(v => (
-                <div
-                  key={v.id}
-                  className="px-5 py-4 flex items-center gap-3 hover:bg-[var(--bg-elevated)] transition cursor-pointer"
-                  onClick={() => router.push(`/dashboard/vistorias/${v.id}`)}
+              <h2 className="text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
+                Olá, {primeiroNome}. Sua operação de campo está pronta.
+              </h2>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-blue-50/85">
+                Inicie uma vistoria, acompanhe conformidade e mantenha o histórico técnico da consultoria em ordem.
+              </p>
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                <button
+                  onClick={() => router.push('/dashboard/obras/nova')}
+                  className="inline-flex items-center justify-center gap-3 rounded-2xl bg-white px-5 py-4 font-black text-slate-950 shadow-xl transition hover:bg-blue-50"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-[var(--text-primary)] text-sm">
-                        {v.obra?.empresa_cliente?.name || v.obra?.name || 'Vistoria ' + v.numero}
-                      </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor[v.status] || statusColor.em_andamento}`}>
-                        {statusLabel[v.status] || v.status}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      <span className="text-xs text-[var(--text-muted)]">
-                        {new Date(v.data_vistoria).toLocaleDateString('pt-BR')}
-                      </span>
-                      {v.indice_conformidade > 0 && (
-                        <>
-                          <span className="text-xs text-[var(--text-muted)]">·</span>
-                          <span className={`text-xs font-medium ${classColor[v.classificacao || ''] || 'text-[var(--text-secondary)]'}`}>
-                            {v.indice_conformidade}% — {v.classificacao}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <ChevronRight size={16} className="text-[var(--text-muted)] flex-shrink-0" />
+                  <Plus size={20} />
+                  Nova vistoria NR 18
+                </button>
+                <button
+                  onClick={() => router.push('/dashboard/relatorios')}
+                  className="inline-flex items-center justify-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-5 py-4 font-bold text-white transition hover:bg-white/16"
+                >
+                  Ver relatórios
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[30px] border border-[var(--border)] bg-[var(--bg-surface)] p-6 shadow-[var(--shadow)]">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-[var(--brand-muted)] p-3 text-[var(--brand)]">
+                <HardHat size={24} />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-[var(--text-muted)]">Resumo rápido</div>
+                <div className="text-2xl font-black text-[var(--text-primary)]">{stats?.vistorias_mes || 0} no mês</div>
+              </div>
+            </div>
+            <div className="mt-6 space-y-3">
+              {[
+                { label: 'Empresas ativas', value: stats?.total_empresas || 0 },
+                { label: 'Vistorias totais', value: stats?.total_vistorias || 0 },
+                { label: 'NCs abertas', value: stats?.ncs_abertas || 0 },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between rounded-2xl bg-[var(--bg-primary)] px-4 py-3">
+                  <span className="text-sm font-semibold text-[var(--text-secondary)]">{item.label}</span>
+                  <span className="text-lg font-black text-[var(--text-primary)]">{item.value}</span>
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        </section>
 
+        {stats && (
+          <section className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: 'Empresas', value: stats.total_empresas, icon: Building2, tone: 'bg-blue-500/12 text-blue-600', sub: 'clientes vinculados' },
+              { label: 'Vistorias', value: stats.total_vistorias, icon: ClipboardCheck, tone: 'bg-violet-500/12 text-violet-600', sub: 'histórico técnico' },
+              { label: 'Este mês', value: stats.vistorias_mes, icon: TrendingUp, tone: 'bg-emerald-500/12 text-emerald-600', sub: 'produção recente' },
+              { label: 'NCs abertas', value: stats.ncs_abertas, icon: AlertCircle, tone: 'bg-amber-500/14 text-amber-700', sub: 'pontos de atenção' },
+            ].map(item => (
+              <div key={item.label} className="rounded-[24px] border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
+                <div className={`mb-5 inline-flex rounded-2xl p-3 ${item.tone}`}>
+                  <item.icon size={22} />
+                </div>
+                <div className="text-4xl font-black text-[var(--text-primary)]">{item.value}</div>
+                <div className="mt-2 text-base font-bold text-[var(--text-primary)]">{item.label}</div>
+                <div className="text-sm text-[var(--text-muted)]">{item.sub}</div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        <section className="mt-5 grid gap-5 lg:grid-cols-[0.72fr_1.28fr]">
+          <aside className="space-y-4">
+            <button
+              onClick={() => router.push('/dashboard/empresas')}
+              className="group flex w-full items-center gap-4 rounded-[24px] border border-[var(--border)] bg-[var(--bg-surface)] p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--brand)]/50 hover:shadow-[var(--shadow)]"
+            >
+              <div className="rounded-2xl bg-blue-500/12 p-4 text-blue-600">
+                <Building2 size={25} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-lg font-black text-[var(--text-primary)]">Empresas e obras</div>
+                <div className="text-sm text-[var(--text-muted)]">{stats?.total_empresas || 0} empresas disponíveis para vistoria</div>
+              </div>
+              <ChevronRight size={20} className="text-[var(--text-muted)] transition group-hover:translate-x-1 group-hover:text-[var(--brand)]" />
+            </button>
+
+            <button
+              onClick={() => router.push('/dashboard/relatorios')}
+              className="group flex w-full items-center gap-4 rounded-[24px] border border-[var(--border)] bg-[var(--bg-surface)] p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--brand)]/50 hover:shadow-[var(--shadow)]"
+            >
+              <div className="rounded-2xl bg-violet-500/12 p-4 text-violet-600">
+                <FileText size={25} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-lg font-black text-[var(--text-primary)]">Relatórios técnicos</div>
+                <div className="text-sm text-[var(--text-muted)]">{stats?.total_vistorias || 0} vistorias registradas</div>
+              </div>
+              <ChevronRight size={20} className="text-[var(--text-muted)] transition group-hover:translate-x-1 group-hover:text-[var(--brand)]" />
+            </button>
+
+            <div className="rounded-[24px] border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-[var(--success-bg)] p-3 text-[var(--success)]">
+                  <BadgeCheck size={22} />
+                </div>
+                <div>
+                  <div className="text-lg font-black text-[var(--text-primary)]">Próximo passo</div>
+                  <div className="text-sm text-[var(--text-muted)]">Revise evidências antes de concluir</div>
+                </div>
+              </div>
+              <div className="mt-5 h-2 rounded-full bg-[var(--bg-primary)]">
+                <div className="h-full w-3/4 rounded-full bg-[var(--brand)]" />
+              </div>
+            </div>
+          </aside>
+
+          <section className="overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow)]">
+            <div className="flex flex-col gap-3 border-b border-[var(--border)] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-bold text-[var(--brand)]">
+                  <Activity size={17} />
+                  Histórico recente
+                </div>
+                <h3 className="mt-1 text-2xl font-black text-[var(--text-primary)]">Últimas vistorias</h3>
+              </div>
+              <button
+                onClick={() => router.push('/dashboard/relatorios')}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--border)] px-4 py-2.5 text-sm font-black text-[var(--brand)] transition hover:border-[var(--brand)]/50 hover:bg-[var(--brand-muted)]"
+              >
+                Ver todas <ArrowRight size={16} />
+              </button>
+            </div>
+
+            {vistorias.length === 0 ? (
+              <div className="px-5 py-16 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-[var(--bg-primary)] text-[var(--text-muted)]">
+                  <Clock size={32} />
+                </div>
+                <p className="text-base font-bold text-[var(--text-primary)]">Nenhuma vistoria realizada ainda</p>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">Comece criando a primeira vistoria NR 18.</p>
+                <button
+                  onClick={() => router.push('/dashboard/obras/nova')}
+                  className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[var(--brand)] px-5 py-3 font-black text-white transition hover:bg-[var(--brand-hover)]"
+                >
+                  <Plus size={18} />
+                  Iniciar primeira vistoria
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-[var(--border)]">
+                {vistorias.map(v => (
+                  <div
+                    key={v.id}
+                    className="grid cursor-pointer gap-3 px-5 py-4 transition hover:bg-[var(--bg-elevated)] sm:grid-cols-[1fr_auto] sm:items-center"
+                    onClick={() => router.push(`/dashboard/vistorias/${v.id}`)}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-base font-black text-[var(--text-primary)]">
+                          {v.obra?.empresa_cliente?.name || v.obra?.name || 'Vistoria ' + v.numero}
+                        </span>
+                        <span className={`rounded-full px-3 py-1 text-xs font-black ${statusColor[v.status] || statusColor.em_andamento}`}>
+                          {statusLabel[v.status] || v.status}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
+                        <span>{new Date(v.data_vistoria).toLocaleDateString('pt-BR')}</span>
+                        {v.indice_conformidade > 0 && (
+                          <span className={`font-bold ${classColor[v.classificacao || ''] || 'text-[var(--text-secondary)]'}`}>
+                            {v.indice_conformidade}% - {v.classificacao}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <ChevronRight size={20} className="hidden text-[var(--text-muted)] sm:block" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </section>
       </main>
     </div>
   )

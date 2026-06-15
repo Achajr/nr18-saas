@@ -1,8 +1,9 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import { CHECKLIST, MULTA_INFO, type ChecklistItem } from '@/lib/checklist-data'
+import { CHECKLIST, MULTA_INFO, type ChecklistBloco, type ChecklistItem } from '@/lib/checklist-data'
+import { findChecklistBloco, findChecklistItem, loadChecklistModelo } from '@/lib/checklist-runtime'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Camera, Trash2, Loader2, CheckCircle2,
@@ -34,6 +35,12 @@ interface ItemState {
   db_id?: string
   gerando_ia?: boolean
   empresas_selecionadas: string[] // ['principal'] ou ['principal', uuid, ...]
+}
+
+interface BaseReavaliacaoResumo {
+  numero: string
+  total: number
+  naoConformes: number
 }
 
 interface VistoriaInfo {
@@ -83,9 +90,13 @@ function abreviar(nome: string): string {
 export default function ChecklistPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const vistoriaId = params.id as string
+  const focoBlocoId = searchParams.get('foco') || ''
+  const baseVistoriaId = searchParams.get('base') || ''
 
   const [vistoria, setVistoria] = useState<VistoriaInfo | null>(null)
+  const [checklist, setChecklist] = useState<ChecklistBloco[]>(CHECKLIST)
   const [itens, setItens] = useState<Record<string, ItemState>>({})
   const [fotos, setFotos] = useState<Record<string, { url: string; storage_path?: string; db_id?: string }[]>>({})
   const [empreiteiras, setEmpreiteiras] = useState<Empreiteira[]>([])
@@ -101,6 +112,7 @@ export default function ChecklistPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [fotoItemAlvo, setFotoItemAlvo] = useState<string | null>(null)
   const [consultoriaId, setConsultoriaId] = useState('')
+  const [baseResumo, setBaseResumo] = useState<BaseReavaliacaoResumo | null>(null)
 
   useEffect(() => { init() }, [vistoriaId])
 
@@ -110,7 +122,12 @@ export default function ChecklistPage() {
       if (!user) { router.push('/auth/login'); return }
 
       const { data: av } = await supabase.from('avaliadores').select('consultoria_id').eq('id', user.id).single()
-      if (av) setConsultoriaId(av.consultoria_id)
+      let checklistAtivo: ChecklistBloco[] = CHECKLIST
+      if (av) {
+        setConsultoriaId(av.consultoria_id)
+        checklistAtivo = await loadChecklistModelo(supabase, av.consultoria_id)
+        setChecklist(checklistAtivo)
+      }
 
       const { data: v } = await supabase
         .from('vistorias')
@@ -118,20 +135,63 @@ export default function ChecklistPage() {
         .eq('id', vistoriaId).single()
       if (!v) { toast.error('Vistoria não encontrada'); router.push('/dashboard'); return }
       setVistoria(v as any)
-      setSecoesAbertas({ [CHECKLIST[0].id]: true })
+      setSecoesAbertas({ [focoBlocoId || checklistAtivo[0].id]: true })
 
       // Carrega empreiteiras da obra
       await carregarEmpreiteiras((v as any).obra_id, (v as any).obra?.empresa_cliente?.name || 'Empresa')
 
       // Estado inicial dos itens
       const estado: Record<string, ItemState> = {}
-      CHECKLIST.forEach(bloco => {
+      checklistAtivo.forEach(bloco => {
         bloco.itens.forEach(item => {
           estado[item.id] = { bloco_id: bloco.id, item_id: item.id, resposta: '', observacao: '', empresas_selecionadas: ['principal'] }
         })
       })
 
-      // Carrega respostas salvas
+      if (baseVistoriaId && baseVistoriaId !== vistoriaId) {
+        const [{ data: baseVistoria }, { data: baseItens }] = await Promise.all([
+          supabase.from('vistorias').select('numero').eq('id', baseVistoriaId).single(),
+          supabase.from('vistoria_itens').select('*').eq('vistoria_id', baseVistoriaId),
+        ])
+
+        if (baseItens && baseItens.length > 0) {
+          const baseItemDbIds = baseItens.map((s: any) => s.id)
+          const { data: baseVinculos } = await supabase
+            .from('vistoria_item_empresas')
+            .select('item_id, empresa_tipo, empreiteira_id')
+            .in('item_id', baseItemDbIds)
+
+          baseItens.forEach((s: any) => {
+            if (estado[s.item_id]) {
+              estado[s.item_id].resposta = s.status || ''
+              estado[s.item_id].observacao = s.observacao || ''
+
+              const emps = (baseVinculos || []).filter((v: any) => v.item_id === s.id)
+              if (emps.length > 0) {
+                const empresasSelecionadas = emps.map((e: any) =>
+                  e.empresa_tipo === 'principal' ? 'principal' : e.empreiteira_id
+                ).filter(Boolean)
+                if (empresasSelecionadas.length > 0) {
+                  estado[s.item_id].empresas_selecionadas = empresasSelecionadas
+                }
+              }
+            }
+          })
+
+          const itensBaseVisiveis = baseItens.filter((s: any) => !focoBlocoId || s.bloco_id === focoBlocoId)
+          setBaseResumo({
+            numero: (baseVistoria as any)?.numero || '',
+            total: itensBaseVisiveis.length,
+            naoConformes: itensBaseVisiveis.filter((s: any) => s.status === 'NC').length,
+          })
+        } else {
+          setBaseResumo(null)
+        }
+      } else {
+        setBaseResumo(null)
+      }
+
+      // Carrega respostas salvas da vistoria atual. Elas prevalecem sobre a base da reavaliação.
       const { data: saved } = await supabase.from('vistoria_itens').select('*').eq('vistoria_id', vistoriaId)
       if (saved && saved.length > 0) {
         // Carrega vinculos de empresas por item
@@ -149,9 +209,12 @@ export default function ChecklistPage() {
             // Restaura empresas selecionadas
             const emps = (vinculos || []).filter((v: any) => v.item_id === s.id)
             if (emps.length > 0) {
-              estado[s.item_id].empresas_selecionadas = emps.map((e: any) =>
+              const empresasSelecionadas = emps.map((e: any) =>
                 e.empresa_tipo === 'principal' ? 'principal' : e.empreiteira_id
-              )
+              ).filter(Boolean)
+              if (empresasSelecionadas.length > 0) {
+                estado[s.item_id].empresas_selecionadas = empresasSelecionadas
+              }
             }
           }
         })
@@ -238,20 +301,21 @@ export default function ChecklistPage() {
   async function salvarItens(statusVistoria: string, silent = false) {
     setSaving(true)
     try {
-      const respondidos = Object.values(itens).filter(i => i.resposta !== '')
+      const respondidos = Object.values(itens).filter(i => i.resposta !== '' && itemIdsVisiveis.has(i.item_id))
       if (respondidos.length === 0) {
         if (!silent) toast.error('Responda pelo menos um item')
         setSaving(false)
         return false
       }
       for (const it of respondidos) {
-        const item = CHECKLIST.flatMap(b => b.itens).find(i => i.id === it.item_id)
-        const bloco = CHECKLIST.find(b => b.itens.some(i => i.id === it.item_id))
+        const item = findChecklistItem(checklist, it.item_id)
+        const bloco = checklist.find(b => b.itens.some(i => i.id === it.item_id))
         if (!item) continue
 
         let dbId = it.db_id
+        const observacao = it.resposta === 'NC' ? (it.observacao || null) : null
         if (dbId) {
-          await supabase.from('vistoria_itens').update({ status: it.resposta, observacao: it.observacao || null }).eq('id', dbId)
+          await supabase.from('vistoria_itens').update({ status: it.resposta, observacao }).eq('id', dbId)
         } else {
           const { data } = await supabase.from('vistoria_itens').insert({
             vistoria_id: vistoriaId,
@@ -265,7 +329,7 @@ export default function ChecklistPage() {
             item_multa: item.multa,
             item_nr_texto: item.nr,
             status: it.resposta,
-            observacao: it.observacao || null,
+            observacao,
           }).select('id').single()
           if (data) {
             dbId = data.id
@@ -274,8 +338,10 @@ export default function ChecklistPage() {
         }
 
         // Salva vinculos de empresas para NCs
-        if (dbId && it.resposta === 'NC') {
+        if (dbId) {
           await supabase.from('vistoria_item_empresas').delete().eq('item_id', dbId)
+        }
+        if (dbId && it.resposta === 'NC') {
           for (const empId of it.empresas_selecionadas) {
             await supabase.from('vistoria_item_empresas').insert({
               vistoria_id: vistoriaId,
@@ -302,7 +368,7 @@ export default function ChecklistPage() {
   }
 
   async function concluirVistoria() {
-    const respondidos = Object.values(itens).filter(i => i.resposta !== '')
+    const respondidos = Object.values(itens).filter(i => i.resposta !== '' && itemIdsVisiveis.has(i.item_id))
     if (respondidos.length === 0) { toast.error('Responda pelo menos um item'); return }
     const conformes = respondidos.filter(i => i.resposta === 'C').length
     const ncs = respondidos.filter(i => i.resposta === 'NC').length
@@ -342,8 +408,8 @@ export default function ChecklistPage() {
     const it = itens[item_id]
     let db_item_id = it?.db_id
     if (!db_item_id) {
-      const item = CHECKLIST.flatMap(b => b.itens).find(i => i.id === item_id)
-      const bloco = CHECKLIST.find(b => b.itens.some(i => i.id === item_id))
+      const item = findChecklistItem(checklist, item_id)
+      const bloco = checklist.find(b => b.itens.some(i => i.id === item_id))
       if (!item) return
       const { data } = await supabase.from('vistoria_itens').insert({
         vistoria_id: vistoriaId, item_id, bloco_id: it.bloco_id,
@@ -388,8 +454,8 @@ export default function ChecklistPage() {
     if (!it.observacao || it.observacao.trim().length < 10) { toast.error('Escreva a observação primeiro (mín. 10 caracteres)'); return }
     setItens(prev => ({ ...prev, [item_id]: { ...prev[item_id], gerando_ia: true } }))
     try {
-      const item = CHECKLIST.flatMap(b => b.itens).find(i => i.id === item_id)
-      const bloco = CHECKLIST.find(b => b.itens.some(i => i.id === item_id))
+      const item = findChecklistItem(checklist, item_id)
+      const bloco = checklist.find(b => b.itens.some(i => i.id === item_id))
       const res = await fetch('/api/ia-observacao', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -405,7 +471,12 @@ export default function ChecklistPage() {
     finally { setItens(prev => ({ ...prev, [item_id]: { ...prev[item_id], gerando_ia: false } })) }
   }
 
-  const todosItens = Object.values(itens)
+  const checklistVisivel = focoBlocoId
+    ? checklist.filter(bloco => bloco.id === focoBlocoId)
+    : checklist
+  const focoBloco = focoBlocoId ? findChecklistBloco(checklist, focoBlocoId) : null
+  const itemIdsVisiveis = new Set(checklistVisivel.flatMap(bloco => bloco.itens.map(item => item.id)))
+  const todosItens = Object.values(itens).filter(item => itemIdsVisiveis.has(item.item_id))
   const totalItens = todosItens.length
   const respondidos = todosItens.filter(i => i.resposta !== '').length
   const conformes = todosItens.filter(i => i.resposta === 'C').length
@@ -504,6 +575,7 @@ export default function ChecklistPage() {
             <h1 className="text-sm font-bold text-[var(--text-primary)] truncate">Checklist NR-18 — {vistoria?.obra?.empresa_cliente?.name || vistoria?.obra?.name}</h1>
             <div className="flex items-center gap-2 mt-0.5">
               <p className="text-xs text-[var(--text-muted)]">Vistoria {vistoria?.numero}</p>
+              {focoBloco && <span className="text-xs bg-[var(--brand-muted)] text-[var(--brand)] px-2 py-0.5 rounded-full">Reavaliação: {focoBloco.ref}</span>}
               {statusAtual === 'incompleta' && <span className="text-xs bg-amber-900/40 text-amber-400 px-2 py-0.5 rounded-full">Incompleta</span>}
               {statusAtual === 'concluida' && <span className="text-xs bg-green-900/40 text-green-400 px-2 py-0.5 rounded-full">Concluída</span>}
             </div>
@@ -533,7 +605,47 @@ export default function ChecklistPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-4 space-y-3">
-        {CHECKLIST.map(bloco => {
+        {focoBloco && (
+          <div className="rounded-2xl border border-[var(--brand)]/30 bg-[var(--brand-muted)] p-4">
+            <div className="text-sm font-bold text-[var(--text-primary)]">Reavaliação focada</div>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              Esta nova vistoria vai avaliar apenas o setor {focoBloco.ref}. O relatório comparativo usará a vistoria anterior como base.
+            </p>
+            {baseResumo && (
+              <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">
+                Respostas da vistoria {baseResumo.numero || 'anterior'} preenchidas: {baseResumo.total} itens, {baseResumo.naoConformes} não conformidades para revisar.
+              </p>
+            )}
+            {baseVistoriaId && (
+              <button
+                onClick={() => router.push('/dashboard/vistorias/' + baseVistoriaId + '/relatorio')}
+                className="mt-3 text-sm font-bold text-[var(--brand)] hover:text-[var(--brand-hover)]"
+              >
+                Ver relatório base
+              </button>
+            )}
+          </div>
+        )}
+
+        {!focoBloco && baseResumo && (
+          <div className="rounded-2xl border border-[var(--brand)]/30 bg-[var(--brand-muted)] p-4">
+            <div className="text-sm font-bold text-[var(--text-primary)]">Reavaliação com respostas preenchidas</div>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              As respostas da vistoria {baseResumo.numero || 'anterior'} foram carregadas como ponto de partida. Revise cada item, marque como Conforme quando corrigido ou mantenha Não conforme e atualize a justificativa.
+            </p>
+            <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">
+              {baseResumo.total} itens preenchidos, {baseResumo.naoConformes} não conformidades para revisar.
+            </p>
+            <button
+              onClick={() => router.push('/dashboard/vistorias/' + baseVistoriaId + '/relatorio')}
+              className="mt-3 text-sm font-bold text-[var(--brand)] hover:text-[var(--brand-hover)]"
+            >
+              Ver relatório base
+            </button>
+          </div>
+        )}
+
+        {checklistVisivel.map(bloco => {
           const itensBloco = bloco.itens.map(i => itens[i.id]).filter(Boolean)
           const respondidosBloco = itensBloco.filter(i => i.resposta !== '').length
           const ncBloco = itensBloco.filter(i => i.resposta === 'NC').length

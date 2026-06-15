@@ -3,27 +3,27 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import {
-  ShieldCheck, LayoutDashboard, Building2, Users, FileText,
-  Plus, LogOut, ChevronLeft, ChevronRight, Settings,
-  HardHat, BarChart3, ClipboardList, Sun, Moon,
-  Palette, AlertTriangle
+  LayoutDashboard, Building2, Users, FileText, ClipboardList,
+  Plus, LogOut, ChevronLeft, ChevronRight, BarChart3, Palette,
+  type LucideIcon
 } from 'lucide-react'
+import BrandLogo from '@/components/BrandLogo'
 
 type Perfil = 'master' | 'gestor' | 'avaliador' | null
 
 interface NavItem {
   label: string
-  icon: any
+  icon: LucideIcon
   href: string
   badge?: number
 }
 
 const THEMES = [
-  { id: 'dark',   label: 'Dark',    color: '#0f1117' },
-  { id: 'light',  label: 'Light',   color: '#f0f2f8' },
-  { id: 'navy',   label: 'Navy',    color: '#060d1f' },
-  { id: 'forest', label: 'Forest',  color: '#0a110d' },
-  { id: 'sunset', label: 'Sunset',  color: '#0f0a0a' },
+  { id: 'light',  label: 'Claro Pro', color: '#f6f8fc' },
+  { id: 'dark',   label: 'Grafite',   color: '#0b1020' },
+  { id: 'navy',   label: 'Cobalto',   color: '#081225' },
+  { id: 'forest', label: 'Emerald',   color: '#f5faf7' },
+  { id: 'sunset', label: 'Copper',    color: '#faf8f5' },
 ]
 
 export default function AppNav({ children }: { children: React.ReactNode }) {
@@ -32,7 +32,7 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
   const [perfil, setPerfil] = useState<Perfil>(null)
   const [user, setUser] = useState<any>(null)
   const [collapsed, setCollapsed] = useState(false)
-  const [theme, setTheme] = useState('dark')
+  const [theme, setTheme] = useState('light')
   const [showThemes, setShowThemes] = useState(false)
   const [pendentes, setPendentes] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -40,11 +40,15 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
   // Rotas publicas — sem nav
   const publicRoutes = ['/auth/login', '/auth/register', '/']
   const isPublic = publicRoutes.includes(pathname) || pathname.startsWith('/auth')
-  if (isPublic) return <>{children}</>
 
   useEffect(() => {
+    if (isPublic) {
+      setLoading(false)
+      return
+    }
+
     // Carrega tema salvo
-    const savedTheme = localStorage.getItem('nr18-theme') || 'dark'
+    const savedTheme = localStorage.getItem('nr18-theme') || 'light'
     setTheme(savedTheme)
     document.documentElement.setAttribute('data-theme', savedTheme)
 
@@ -52,7 +56,7 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
     setCollapsed(savedCollapsed)
 
     loadUser()
-  }, [])
+  }, [isPublic])
 
   async function loadUser() {
     try {
@@ -113,6 +117,7 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
     { label: 'Dashboard', icon: LayoutDashboard, href: '/consultoria' },
     { label: 'Empresas', icon: Building2, href: '/consultoria/empresas' },
     { label: 'Avaliadores', icon: Users, href: '/consultoria/avaliadores' },
+    { label: 'Checklists', icon: ClipboardList, href: '/consultoria/checklists' },
     { label: 'Relatórios', icon: BarChart3, href: '/consultoria/relatorios', badge: pendentes || undefined },
   ] : [
     { label: 'Início', icon: LayoutDashboard, href: '/dashboard' },
@@ -128,6 +133,7 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
   ] : perfil === 'gestor' ? [
     { label: 'Dashboard', icon: LayoutDashboard, href: '/consultoria' },
     { label: 'Empresas', icon: Building2, href: '/consultoria/empresas' },
+    { label: 'Checklists', icon: ClipboardList, href: '/consultoria/checklists' },
     { label: 'Relatórios', icon: BarChart3, href: '/consultoria/relatorios', badge: pendentes || undefined },
   ] : [
     { label: 'Início', icon: LayoutDashboard, href: '/dashboard' },
@@ -137,6 +143,8 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
 
   const initials = user?.full_name?.split(' ').slice(0,2).map((n: string) => n[0]).join('').toUpperCase() || '??'
   const consultoriaName = user?.consultoria?.name || (perfil === 'master' ? 'Master Admin' : '')
+
+  if (isPublic) return <>{children}</>
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
@@ -160,15 +168,11 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
 
         {/* Logo */}
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">
-            <ShieldCheck size={20} color="white" />
-          </div>
-          {!collapsed && (
-            <div>
-              <div className="sidebar-logo-text">NR18 SaaS</div>
-              {consultoriaName && <div className="sidebar-logo-sub">{consultoriaName}</div>}
-            </div>
-          )}
+          <BrandLogo
+            size="sm"
+            markOnly={collapsed}
+            subtitle={consultoriaName || 'Vistorias e conformidade'}
+          />
         </div>
 
         {/* Nav */}
@@ -249,7 +253,7 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
       {/* ── BOTTOM NAV (mobile) ── */}
       <nav className="bottom-nav">
         <div className="bottom-nav-items">
-          {bottomItems.map((item, i) => {
+          {bottomItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/')
             const isNew = item.label === 'Nova' || item.label === 'Nova vistoria'
             if (isNew) {

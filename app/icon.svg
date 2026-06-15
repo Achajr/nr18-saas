@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="bg" x1="14" y1="10" x2="106" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#09111f"/>
+      <stop offset="0.42" stop-color="#185FA5"/>
+      <stop offset="1" stop-color="#16a34a"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="20" y1="18" x2="96" y2="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(255,255,255,.24)"/>
+      <stop offset="1" stop-color="rgba(255,255,255,.05)"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="30" y1="28" x2="88" y2="90" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#cbd5e1"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="26" fill="url(#bg)"/>
+  <path d="M16 24c0-4.4 3.6-8 8-8h72c4.4 0 8 3.6 8 8v72c0 4.4-3.6 8-8 8H24c-4.4 0-8-3.6-8-8V24Z" fill="url(#shine)"/>
+  <path d="M32 28h56c4.4 0 8 3.6 8 8v48c0 6.6-5.4 12-12 12H40c-6.6 0-12-5.4-12-12V36c0-4.4 3.6-8 8-8Z" fill="rgba(15,23,42,.18)" stroke="rgba(255,255,255,.28)" stroke-width="1.8"/>
+  <path d="M38 36h32" stroke="url(#accent)" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M38 48h22" stroke="rgba(255,255,255,.88)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M38 60h26" stroke="rgba(255,255,255,.68)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M38 72h16" stroke="rgba(255,255,255,.5)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M67 39h7c2.7 0 4.9 2.2 4.9 4.9V49H62v-5.1c0-2.7 2.2-4.9 4.9-4.9Z" fill="rgba(255,255,255,.14)"/>
+  <path d="M62 49h17" stroke="rgba(255,255,255,.18)" stroke-width="2" stroke-linecap="round"/>
+  <path d="M62 67.5l5.2 5.4 10.4-14.2" fill="none" stroke="#ecfdf5" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="60" y="91" text-anchor="middle" fill="#fff" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="17" font-weight="800" letter-spacing="0">NR18</text>
+  <path d="M43 94h34" stroke="rgba(255,255,255,.28)" stroke-width="2" stroke-linecap="round"/>
+</svg>

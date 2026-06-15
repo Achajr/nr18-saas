@@ -1,10 +1,11 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import { CHECKLIST, MULTA_INFO } from '@/lib/checklist-data'
+import { CHECKLIST, MULTA_INFO, type ChecklistBloco } from '@/lib/checklist-data'
+import { findChecklistItem, loadChecklistModelo } from '@/lib/checklist-runtime'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Download, XCircle, HardHat, CloudSun, Loader2, Sparkles, Building2, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Download, XCircle, HardHat, CloudSun, Loader2, Sparkles, Building2, ChevronDown, GitCompareArrows, RefreshCw } from 'lucide-react'
 
 // ─── CALCULO DE MULTAS NR-28 ─────────────────────────────────────────────────
 function calcularMulta(grau: string, numFuncionarios: number): number {
@@ -58,6 +59,7 @@ interface VistoriaCompleta {
 }
 interface ItemVistoria {
   id: string; item_id: string; bloco_id: string; status: string; observacao: string | null
+  item_texto: string | null; item_ref: string | null; item_nivel: string | null; item_perigo: string | null
   item_nr_texto: string | null; item_multa: string | null
   fotos?: { url: string; storage_path: string }[]
   empresas?: { empresa_tipo: string; empreiteira_id: string | null }[]
@@ -90,6 +92,7 @@ export default function RelatorioPage() {
   const vistoriaId = params.id as string
 
   const [vistoria, setVistoria] = useState<VistoriaCompleta | null>(null)
+  const [checklist, setChecklist] = useState<ChecklistBloco[]>(CHECKLIST)
   const [todosItens, setTodosItens] = useState<ItemVistoria[]>([])
   const [empreiteiras, setEmpreiteiras] = useState<Empreiteira[]>([])
   const [empresas, setEmpresas] = useState<EmpresaOpcao[]>([])
@@ -109,7 +112,7 @@ export default function RelatorioPage() {
     if (empresaSelecionada && todosItens.length > 0) {
       calcularStats()
     }
-  }, [empresaSelecionada, todosItens])
+  }, [empresaSelecionada, todosItens, checklist])
 
   async function loadRelatorio() {
     try {
@@ -120,6 +123,11 @@ export default function RelatorioPage() {
       if (!v) { toast.error('Vistoria nao encontrada'); return }
       setVistoria(v as any)
       setParecer(v.parecer_editado || v.parecer_ia || '')
+      let checklistAtivo = CHECKLIST
+      if ((v as any).consultoria_id) {
+        checklistAtivo = await loadChecklistModelo(supabase, (v as any).consultoria_id)
+        setChecklist(checklistAtivo)
+      }
 
       // Carrega empreiteiras
       const { data: emps } = await supabase.from('obra_empreiteiras').select('*').eq('obra_id', (v as any).obra?.id).eq('ativa', true)
@@ -173,7 +181,7 @@ export default function RelatorioPage() {
 
       // Gera parecer IA automaticamente se nao existir
       if (!v.parecer_ia && !v.parecer_editado) {
-        await gerarParecerIA(v, itensCompletos, empresasList[0])
+        await gerarParecerIA(v, itensCompletos, empresasList[0], checklistAtivo)
       }
     } catch (err) { console.error(err); toast.error('Erro ao carregar relatorio') }
     finally { setLoading(false) }
@@ -193,7 +201,7 @@ export default function RelatorioPage() {
 
   function calcularStats() {
     if (!empresaSelecionada) return
-    const stats = CHECKLIST.map(bloco => {
+    const stats = checklist.map(bloco => {
       const itensBloco = todosItens.filter(it => it.bloco_id === bloco.id)
       const conformes = itensBloco.filter(i => i.status === 'C').length
       const ncs = itensBloco.filter(i => i.status === 'NC').length
@@ -205,7 +213,7 @@ export default function RelatorioPage() {
     setBlocoStats(stats)
   }
 
-  async function gerarParecerIA(v?: any, itens?: ItemVistoria[], empresa?: EmpresaOpcao) {
+  async function gerarParecerIA(v?: any, itens?: ItemVistoria[], empresa?: EmpresaOpcao, modelo?: ChecklistBloco[]) {
     const vData = v || vistoria
     const itensData = itens || todosItens
     const empData = empresa || empresaSelecionada
@@ -217,9 +225,13 @@ export default function RelatorioPage() {
         if (!it.empresas || it.empresas.length === 0) return empData.tipo === 'principal'
         return it.empresas.some((e: any) => empData.tipo === 'principal' ? e.empresa_tipo === 'principal' : e.empreiteira_id === empData.id)
       })
+      const checklistParecer = modelo || checklist
       const ncsList = ncsEmp.map(nc => {
-        const item = CHECKLIST.flatMap(b => b.itens).find(i => i.id === nc.item_id)
-        return item ? '- [' + item.nivel.toUpperCase() + '] ' + item.ref + ': ' + item.t + (nc.observacao ? ' | Obs: ' + nc.observacao : '') : ''
+        const item = findChecklistItem(checklistParecer, nc.item_id)
+        const nivel = item?.nivel || nc.item_nivel || 'medio'
+        const ref = item?.ref || nc.item_ref || ''
+        const texto = item?.t || nc.item_texto || ''
+        return texto ? '- [' + nivel.toUpperCase() + '] ' + ref + ': ' + texto + (nc.observacao ? ' | Obs: ' + nc.observacao : '') : ''
       }).filter(Boolean).join('\n')
 
       const res = await fetch('/api/ia-observacao', {
@@ -256,14 +268,56 @@ export default function RelatorioPage() {
 
   function exportarPDF() { setGerando(true); setTimeout(() => { window.print(); setGerando(false) }, 400) }
 
+  async function criarReavaliacao(blocoId?: string) {
+    if (!vistoria?.obra?.id) return
+    setGerando(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/auth/login'); return }
+
+      const { data: av } = await supabase.from('avaliadores').select('consultoria_id').eq('id', user.id).single()
+      const consultoriaId = av?.consultoria_id || (vistoria as any).consultoria_id
+      const { count } = await supabase
+        .from('vistorias')
+        .select('*', { count: 'exact', head: true })
+        .eq('consultoria_id', consultoriaId)
+      const numero = `${String((count || 0) + 1).padStart(3, '0')}/${new Date().getFullYear()}`
+      const bloco = blocoId ? checklist.find(b => b.id === blocoId) : null
+
+      const { data, error } = await supabase
+        .from('vistorias')
+        .insert({
+          obra_id: vistoria.obra.id,
+          consultoria_id: consultoriaId,
+          avaliador_id: user.id,
+          numero,
+          data_vistoria: new Date().toISOString().split('T')[0],
+          clima: vistoria.clima || 'Bom / ensolarado',
+          etapa_obra: bloco ? `Reavaliação - ${bloco.ref}` : vistoria.etapa_obra || '',
+          observacoes_gerais: `Reavaliação baseada na vistoria ${vistoria.numero}${bloco ? ` - setor ${bloco.titulo}` : ''}.`,
+          status: 'em_andamento',
+        })
+        .select('id')
+        .single()
+      if (error) throw error
+
+      toast.success('Reavaliação criada')
+      router.push(`/dashboard/vistorias/${data.id}${blocoId ? `?foco=${blocoId}&base=${vistoriaId}` : `?base=${vistoriaId}`}`)
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao criar reavaliação')
+    } finally {
+      setGerando(false)
+    }
+  }
+
   const ncsEmpresa = empresaSelecionada ? filtrarNcsPorEmpresa(empresaSelecionada) : []
   const indice = vistoria?.indice_conformidade || 0
   const classColor = indice >= 90 ? 'text-[#3B6D11]' : indice >= 70 ? 'text-[#854F0B]' : indice >= 50 ? 'text-[#A32D2D]' : 'text-[#791F1F]'
   const classBorder = indice >= 90 ? 'border-green-500/30' : indice >= 70 ? 'border-amber-500/30' : indice >= 50 ? 'border-orange-500/30' : 'border-red-500/30'
   const classBg = indice >= 90 ? 'bg-green-900/10' : indice >= 70 ? 'bg-amber-900/10' : indice >= 50 ? 'bg-orange-900/10' : 'bg-red-900/10'
-  const ncsGrave = ncsEmpresa.filter(nc => CHECKLIST.flatMap(b => b.itens).find(i => i.id === nc.item_id)?.nivel === 'grave').length
-  const ncsAlto  = ncsEmpresa.filter(nc => CHECKLIST.flatMap(b => b.itens).find(i => i.id === nc.item_id)?.nivel === 'alto').length
-  const ncsMedio = ncsEmpresa.filter(nc => CHECKLIST.flatMap(b => b.itens).find(i => i.id === nc.item_id)?.nivel === 'medio').length
+  const ncsGrave = ncsEmpresa.filter(nc => (findChecklistItem(checklist, nc.item_id)?.nivel || nc.item_nivel) === 'grave').length
+  const ncsAlto  = ncsEmpresa.filter(nc => (findChecklistItem(checklist, nc.item_id)?.nivel || nc.item_nivel) === 'alto').length
+  const ncsMedio = ncsEmpresa.filter(nc => (findChecklistItem(checklist, nc.item_id)?.nivel || nc.item_nivel) === 'medio').length
   const numFunc  = empresaSelecionada?.num_funcionarios || 0
 
   if (loading) return <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center"><div className="w-10 h-10 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" /></div>
@@ -397,6 +451,24 @@ export default function RelatorioPage() {
             </div>
           </div>
 
+          <div className="no-print grid gap-3 sm:grid-cols-2">
+            <button
+              onClick={() => criarReavaliacao()}
+              disabled={gerando}
+              className="flex items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 text-sm font-black text-[var(--brand)] transition hover:border-[var(--brand)]/50 hover:bg-[var(--brand)]/10 disabled:opacity-60"
+            >
+              <RefreshCw size={17} />
+              Reavaliar obra completa
+            </button>
+            <button
+              onClick={() => router.push('/dashboard/vistorias/' + vistoriaId + '/comparativo')}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-black text-white shadow-lg shadow-[var(--brand-muted)] transition hover:bg-[var(--brand-hover)]"
+            >
+              <GitCompareArrows size={17} />
+              Relatório comparativo
+            </button>
+          </div>
+
           {/* 3. NCs POR NIVEL */}
           {ncsEmpresa.length > 0 && (
             <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-5">
@@ -444,6 +516,15 @@ export default function RelatorioPage() {
                   </div>
                   <div className="h-2 bg-[var(--border)] rounded-full overflow-hidden">
                     <div className="h-full rounded-full transition-all" style={{ width: s.indice + '%', backgroundColor: color }} />
+                  </div>
+                  <div className="no-print mt-2 flex justify-end">
+                    <button
+                      onClick={() => criarReavaliacao(s.bloco.id)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] px-3 py-1.5 text-xs font-bold text-[var(--brand)] transition hover:border-[var(--brand)]/50 hover:bg-[var(--brand)]/10"
+                    >
+                      <RefreshCw size={13} />
+                      Reavaliar este setor
+                    </button>
                   </div>
                 </div>
               )
@@ -496,10 +577,17 @@ export default function RelatorioPage() {
               </div>
               <div className="divide-y divide-[var(--border)]">
                 {ncsEmpresa.map((nc, idx) => {
-                  const item = CHECKLIST.flatMap(b => b.itens).find(i => i.id === nc.item_id)
-                  const bloco = CHECKLIST.find(b => b.itens.some(i => i.id === nc.item_id))
-                  if (!item) return null
-                  const nivelCfg = NIVEL_CONFIG[item.nivel as keyof typeof NIVEL_CONFIG]
+                  const baseItem = findChecklistItem(checklist, nc.item_id)
+                  const item = {
+                    id: nc.item_id,
+                    t: baseItem?.t || nc.item_texto || 'Item avaliado',
+                    ref: baseItem?.ref || nc.item_ref || '',
+                    nivel: baseItem?.nivel || nc.item_nivel || 'medio',
+                    perigo: baseItem?.perigo || nc.item_perigo || '',
+                    multa: baseItem?.multa || nc.item_multa || 'i2',
+                    nr: baseItem?.nr || nc.item_nr_texto || '',
+                  }
+                  const nivelCfg = NIVEL_CONFIG[item.nivel as keyof typeof NIVEL_CONFIG] || NIVEL_CONFIG.medio
                   const multaCfg = MULTA_CONFIG[item.multa as keyof typeof MULTA_CONFIG] || MULTA_CONFIG.i1
                   return (
                     <div key={nc.id} className="p-5">
@@ -548,8 +636,16 @@ export default function RelatorioPage() {
           {/* 7. MULTAS */}
           {ncsEmpresa.length > 0 && (() => {
             const itensMulta = ncsEmpresa.map(nc => {
-              const item = CHECKLIST.flatMap(b => b.itens).find(i => i.id === nc.item_id)
-              if (!item) return null
+              const baseItem = findChecklistItem(checklist, nc.item_id)
+              const item = {
+                id: nc.item_id,
+                t: baseItem?.t || nc.item_texto || 'Item avaliado',
+                ref: baseItem?.ref || nc.item_ref || '',
+                nivel: baseItem?.nivel || nc.item_nivel || 'medio',
+                perigo: baseItem?.perigo || nc.item_perigo || '',
+                multa: baseItem?.multa || nc.item_multa || 'i2',
+                nr: baseItem?.nr || nc.item_nr_texto || '',
+              }
               const valor = calcularMulta(item.multa, numFunc)
               return { nc, item, valor }
             }).filter(Boolean) as any[]
@@ -584,7 +680,7 @@ export default function RelatorioPage() {
                         </div>
                         <div className="space-y-2">
                           {itens.map((it: any) => {
-                            const bloco = CHECKLIST.find(b => b.itens.some(i => i.id === it.nc.item_id))
+                            const bloco = checklist.find(b => b.itens.some(i => i.id === it.nc.item_id))
                             const fatorLabel = numFunc <= 10 ? '1.0' : numFunc <= 20 ? '1.5' : numFunc <= 50 ? '2.0' : numFunc <= 100 ? '2.5' : numFunc <= 500 ? '3.0' : numFunc <= 1000 ? '4.0' : '5.0'
                             return (
                               <div key={it.nc.id} className={'border rounded-xl p-3 ' + cfg.border + ' bg-[var(--bg-primary)]'}>
@@ -646,7 +742,7 @@ export default function RelatorioPage() {
               <div className="text-sm text-[var(--text-secondary)]">{vistoria.avaliador?.crea ? 'CREA ' + vistoria.avaliador.crea : vistoria.avaliador?.registro_mte ? 'Registro MTE n. ' + vistoria.avaliador.registro_mte : 'Tecnico de Seguranca do Trabalho'}</div>
               <div className="text-sm text-[var(--text-secondary)]">{vistoria.avaliador?.consultoria?.name}</div>
               <div className="text-xs text-[var(--text-muted)] mt-3">Emitido em {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
-              <div className="text-xs text-[var(--text-muted)] mt-1">Documento gerado pelo sistema NR18 SaaS — Portaria MTE n. 836/2026</div>
+              <div className="text-xs text-[var(--text-muted)] mt-1">Documento gerado pelo sistema NR18 Check — Portaria MTE n. 836/2026</div>
             </div>
           </div>
 

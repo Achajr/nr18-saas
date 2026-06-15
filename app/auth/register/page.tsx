@@ -3,12 +3,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
-import { ShieldCheck, Loader2, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
+import BrandLogo from '@/components/BrandLogo'
 
 const ESTADOS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
 
 const ROLES = [
-  { value: 'admin',      label: 'Administrador',                        registro: null },
+  { value: 'gestor',     label: 'Gestor da consultoria',                registro: null },
   { value: 'engenheiro', label: 'Engenheiro de Segurança do Trabalho',  registro: 'crea' },
   { value: 'tecnico',    label: 'Técnico de Segurança do Trabalho',     registro: 'mte' },
   { value: 'estagiario', label: 'Estagiário de Segurança do Trabalho',  registro: null },
@@ -39,6 +40,13 @@ export default function RegisterPage() {
   const roleInfo = ROLES.find(r => r.value === role)
   const precisaMTE  = roleInfo?.registro === 'mte'
   const precisaCREA = roleInfo?.registro === 'crea'
+  const dbRole = role === 'gestor'
+    ? 'gestor'
+    : role === 'estagiario'
+      ? 'estagiario'
+      : role === 'viewer'
+        ? 'viewer'
+        : 'avaliador'
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -58,38 +66,49 @@ export default function RegisterPage() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
+        options: { data: { full_name: form.full_name } },
       })
       if (authError) throw authError
       if (!authData.user) throw new Error('Usuário não criado')
 
-      // 2. Criar organização
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
+      // 2. Criar consultoria no schema atual
+      const { data: consultoria, error: consultoriaError } = await supabase
+        .from('consultorias')
         .insert({
           name: form.org_name,
           cnpj: form.org_cnpj || null,
-          plan: 'free',
+          email: form.email,
+          responsavel_nome: form.full_name,
+          responsavel_email: form.email,
+          plan: 'pro',
+          max_avaliadores: 5,
+          max_empresas: 30,
+          max_obras: 999,
+          active: true,
+          created_by: authData.user.id,
         })
-        .select()
+        .select('id')
         .single()
-      if (orgError) throw orgError
+      if (consultoriaError) throw consultoriaError
 
-      // 3. Criar perfil
-      const { error: profileError } = await supabase
-        .from('profiles')
+      // 3. Criar vínculo do usuário como avaliador/gestor
+      const { error: avaliadorError } = await supabase
+        .from('avaliadores')
         .insert({
           id: authData.user.id,
-          organization_id: org.id,
+          consultoria_id: consultoria.id,
           full_name: form.full_name,
           email: form.email,
-          role: role === 'estagiario' ? 'tecnico' : role, // estagiário usa role tecnico com flag
+          role: dbRole,
+          tipo_registro: precisaMTE ? 'mte' : precisaCREA ? 'crea' : null,
           registro_mte: precisaMTE ? (form.registro_mte || null) : null,
           crea: precisaCREA ? (form.crea_numero ? `CREA-${creaEstado} ${form.crea_numero}` : null) : null,
+          active: true,
         })
-      if (profileError) throw profileError
+      if (avaliadorError) throw avaliadorError
 
       toast.success('Conta criada! Bem-vindo ao sistema.')
-      router.push('/dashboard')
+      router.push(dbRole === 'gestor' ? '/consultoria' : '/dashboard')
     } catch (err: any) {
       console.error(err)
       if (err.message?.includes('already registered')) {
@@ -107,13 +126,7 @@ export default function RegisterPage() {
 
       {/* Logo */}
       <div className="mb-6 flex flex-col items-center gap-3">
-        <div className="w-14 h-14 bg-[var(--brand)] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/40">
-          <ShieldCheck size={28} color="#E6F1FB" />
-        </div>
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Vistoria NR 18</h1>
-          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Criar sua conta</p>
-        </div>
+        <BrandLogo size="lg" subtitle="Criar sua conta" className="flex-col text-center" />
       </div>
 
       {/* Card */}

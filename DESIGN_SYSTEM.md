@@ -142,3 +142,71 @@ bg-[#16192a] border border-[#2a2d4a] rounded-2xl w-full max-w-lg max-h-[90vh] ov
 - Redirecionamento pós-login usa window.location.href (não router.push) para garantir cookie
 - BrasilAPI endpoint CNPJ: https://brasilapi.com.br/api/cnpj/v1/{cnpj}
 - BrasilAPI endpoint CEP: https://brasilapi.com.br/api/cep/v1/{cep}
+
+## Estilo do Checklist NR 18 — APROVADO
+
+### Item do checklist
+- Linha inteira fica VERDE com borda lateral esquerda quando CONFORME
+- Linha inteira fica VERMELHA com borda lateral esquerda quando NÃO CONFORME  
+- Linha inteira fica CINZA com borda lateral esquerda quando NÃO APLICÁVEL
+- Botões de status ficam com fundo SÓLIDO colorido quando selecionados
+
+### Classes CSS por status
+- Conforme: cl-item.st-ok → background:#EAF3DE, border-left:3px solid #639922
+- Não conforme: cl-item.st-nc → background:#FCEBEB, border-left:3px solid #E24B4A
+- Não aplicável: cl-item.st-na → background:#F1EFE8, border-left:3px solid #888780, opacity:0.75
+
+### Botões de status (✓ / ✗ / —)
+- Tamanho: 28x28px, border-radius: var(--border-radius-md)
+- Conforme ativo: background:#3B6D11, border:#3B6D11, ícone branco
+- NC ativo: background:#A32D2D, border:#A32D2D, ícone branco
+- NA ativo: background:#888780, border:#888780, ícone branco
+
+### Barra de progresso — tricolor
+- Verde = conformes, Vermelho = NCs, Cinza = N/A
+- Exibe: X / Y (Z%) itens avaliados
+
+### Botão N/A por bloco
+- Cada bloco tem botão "N/A bloco" no header que marca todos os itens como N/A
+- Clicar novamente reverte todos para pendente
+- Badge do bloco mostra: "N/A", "X NC", "✓ OK" ou "X/Y"
+
+### Painel de NC (expande ao marcar como NC)
+1. Texto integral da NR 18 em itálico com borda lateral
+2. Textarea para observação com botão "IA" (sparkles) no canto inferior direito
+3. Botão "Foto da NC" para adicionar fotos
+4. Miniaturas 72x72px das fotos com botão X para remover
+
+### Botão IA (redigir observação)
+- Posição: absolute, bottom:7px, right:7px dentro da textarea
+- Estilo: bg-[#185FA5], texto "IA" com ícone sparkles
+- Ao clicar: chama API /api/ia/redigir com contexto do item + fotos
+- Retorna: DESCRIÇÃO / RISCO / AÇÃO CORRETIVA
+
+### Tags por item
+Cada item mostra 3 tags:
+1. Referência da NR (ex: 18.6.3) — text-xs text-slate-500 font-bold
+2. Nível de risco (Grave/Alto/Médio/Baixo) — badge colorido
+3. Tipo de perigo (Elétrico, Queda, etc.) — badge cinza
+
+### Faixa de multa por item
+- Tag com grau (I1/I2/I3/I4) + faixa em R$
+- Mostrada na legenda no topo do checklist
+- No relatório aparece junto à NC
+
+### Filtros do checklist
+Botões: Todos | Pendentes | Não conformes | Conformes | Não aplicáveis
++ campo de busca por texto/referência
+
+### Blocos NR 18 (ordem e IDs)
+pgr, vivencia, eletrica, demolicao, escavacao, carp, quente, telhados,
+escadas, quedas, maquinas, guindar, elevadores, andaimes, sinalizacao,
+capacitacao, gerais
+
+### Relatório técnico (gerado por IA)
+- Índice de conformidade em % com classificação
+- Satisfatório ≥85% / Parcialmente satisfatório ≥65% / Insatisfatório ≥45% / Crítico <45%
+- Por NC: texto da NR violada + faixa de multa + observação do técnico + fotos + ação corretiva
+- Estimativa de exposição máxima a multas (somatório dos tetos)
+- Conclusão técnica
+- Botões: Copiar / Plano de ação / Impressão / Comunicados empreiteiras

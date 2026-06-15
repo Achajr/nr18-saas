@@ -7,20 +7,20 @@ import AppNav from '@/components/AppNav'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'NR18 SaaS',
-  description: 'Sistema de vistoria e checklist NR-18 com IA',
-  themeColor: '#185FA5',
+  title: 'NR18 Check',
+  description: 'Plataforma de vistorias, checklists e conformidade NR-18 com IA',
 }
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  themeColor: '#185FA5',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" data-theme="dark">
+    <html lang="pt-BR" data-theme="light">
       <body className={inter.className}>
         <AppNav>
           {children}
