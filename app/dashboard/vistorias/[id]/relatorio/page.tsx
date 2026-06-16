@@ -66,6 +66,18 @@ interface ItemVistoria {
 }
 interface Empreiteira { id: string; name: string; cnpj: string; num_funcionarios: number }
 interface EmpresaOpcao { id: string; label: string; cnpj: string; num_funcionarios: number; tipo: 'principal' | 'empreiteira' }
+interface ItemTecnico {
+  nc: ItemVistoria
+  texto: string
+  ref: string
+  nivel: string
+  perigo: string
+  multa: string
+  nr: string
+  blocoTitulo: string
+  blocoRef: string
+  valorMulta: number
+}
 
 const NIVEL_CONFIG = {
   grave: { label: 'Grave', bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', dot: '#A32D2D' },
@@ -80,10 +92,112 @@ const MULTA_CONFIG = {
   i4: { bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]' },
 }
 const GRAU_CFG: Record<string, { label: string; bg: string; text: string; border: string }> = {
-  i4: { label: 'Grau I4 — Gravidade Maxima', bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', border: 'border-[#A32D2D]/30' },
+  i4: { label: 'Grau I4 — Gravidade Máxima', bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', border: 'border-[#A32D2D]/30' },
   i3: { label: 'Grau I3 — Alta Gravidade',   bg: 'bg-[#FAEEDA]', text: 'text-[#633806]', border: 'border-[#854F0B]/30' },
-  i2: { label: 'Grau I2 — Gravidade Media',  bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', border: 'border-[var(--brand)]/30' },
+  i2: { label: 'Grau I2 — Gravidade Média',  bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', border: 'border-[var(--brand)]/30' },
   i1: { label: 'Grau I1 — Menor Gravidade',  bg: 'bg-[#EAF3DE]', text: 'text-[#27500A]', border: 'border-[#3B6D11]/30' },
+}
+
+const PDF = {
+  brand: '#2563EB',
+  brandDark: '#12356F',
+  ink: '#111827',
+  muted: '#64748B',
+  line: '#D9E2EC',
+  bg: '#F6F8FC',
+  green: '#2F7D32',
+  amber: '#B7791F',
+  red: '#A32D2D',
+  darkRed: '#791F1F',
+  blueSoft: '#E6F1FB',
+  greenSoft: '#EAF3DE',
+  amberSoft: '#FAEEDA',
+  redSoft: '#FCEBEB',
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '')
+  return [
+    parseInt(clean.slice(0, 2), 16),
+    parseInt(clean.slice(2, 4), 16),
+    parseInt(clean.slice(4, 6), 16),
+  ]
+}
+
+function dataBR(data?: string | null) {
+  if (!data) return 'Não informado'
+  return new Date(data + 'T12:00:00').toLocaleDateString('pt-BR')
+}
+
+function sanitizeFileName(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 90)
+}
+
+function prazoPorNivel(nivel?: string | null) {
+  if (nivel === 'grave') return 'Imediato / até 24h'
+  if (nivel === 'alto') return 'Até 72h'
+  if (nivel === 'medio') return 'Até 7 dias'
+  return 'Até 15 dias'
+}
+
+function prioridadePorNivel(nivel?: string | null) {
+  if (nivel === 'grave') return 'Crítica'
+  if (nivel === 'alto') return 'Alta'
+  if (nivel === 'medio') return 'Média'
+  return 'Baixa'
+}
+
+function corPorIndice(indice: number) {
+  if (indice >= 90) return PDF.green
+  if (indice >= 70) return PDF.amber
+  if (indice >= 50) return PDF.red
+  return PDF.darkRed
+}
+
+function corPorNivel(nivel?: string | null) {
+  if (nivel === 'grave') return PDF.darkRed
+  if (nivel === 'alto') return PDF.amber
+  if (nivel === 'medio') return PDF.brand
+  return PDF.green
+}
+
+function acaoRecomendada(itemTexto: string, perigo?: string | null) {
+  const perigoTxt = perigo ? `Controle do perigo identificado (${perigo}).` : 'Controle do perigo identificado.'
+  return `${perigoTxt} Regularizar o requisito: ${itemTexto}`
+}
+
+function custoEstimado(multa: string, numFuncionarios: number) {
+  const valor = calcularMulta(multa, numFuncionarios)
+  return `Referência de exposição: ${formatMoeda(valor)} por infração. Custo de adequação: definir por cotação/plano interno.`
+}
+
+function formatRegistroProfissional(avaliador?: VistoriaCompleta['avaliador'] | null) {
+  const crea = avaliador?.crea?.trim()
+  if (crea) return /^CREA\b|^CREA[-/]/i.test(crea) ? crea : `CREA ${crea}`
+  const mte = avaliador?.registro_mte?.trim()
+  if (mte) return /^MTE\b|^Registro MTE\b/i.test(mte) ? mte : `Registro MTE ${mte}`
+  return 'Registro não informado'
+}
+
+async function imageToDataUrl(src: string): Promise<string | null> {
+  try {
+    const res = await fetch(src)
+    if (!res.ok) return null
+    const blob = await res.blob()
+    return await new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
 }
 
 export default function RelatorioPage() {
@@ -238,11 +352,11 @@ export default function RelatorioPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           item_codigo: 'PARECER',
-          item_descricao: 'Parecer tecnico conclusivo',
-          secao_nome: 'Relatorio NR-18',
+          item_descricao: 'Parecer técnico conclusivo',
+          secao_nome: 'Relatório NR-18',
           empresa: empData.label,
           obra: (vData as any).obra?.name || '',
-          contexto: 'Indice de conformidade: ' + vData.indice_conformidade + '%. Classificacao: ' + vData.classificacao + '. Total avaliados: ' + vData.total_itens + '. Conformes: ' + vData.total_conformes + '. Nao conformes: ' + ncsEmp.length + '. Data da vistoria: ' + vData.data_vistoria + '.\n\nNao conformidades:\n' + (ncsList || 'Nenhuma NC atribuida a esta empresa.'),
+          contexto: 'Índice de conformidade: ' + vData.indice_conformidade + '%. Classificação: ' + vData.classificacao + '. Total avaliados: ' + vData.total_itens + '. Conformes: ' + vData.total_conformes + '. Não conformes: ' + ncsEmp.length + '. Data da vistoria: ' + vData.data_vistoria + '.\n\nNão conformidades:\n' + (ncsList || 'Nenhuma NC atribuída a esta empresa.'),
         }),
       })
       const json = await res.json()
@@ -266,7 +380,488 @@ export default function RelatorioPage() {
     finally { setSalvandoParecer(false) }
   }
 
-  function exportarPDF() { setGerando(true); setTimeout(() => { window.print(); setGerando(false) }, 400) }
+  async function exportarPDF() {
+    if (!vistoria || !empresaSelecionada) return
+    setGerando(true)
+    try {
+      const vistoriaPdf = vistoria
+      const [{ jsPDF }, autoTableModule] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ])
+      const autoTable = (autoTableModule.default || autoTableModule.autoTable) as any
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
+      const pageW = doc.internal.pageSize.getWidth()
+      const pageH = doc.internal.pageSize.getHeight()
+      const margin = 14
+      const contentW = pageW - margin * 2
+      let y = margin
+      let secao = 1
+      const naoInformado = 'Não informado'
+
+      const logoData = await imageToDataUrl('/branding/login-logo-login.png')
+      const ncs = ncsEmpresa
+      const itensTecnicos: ItemTecnico[] = ncs.map(nc => {
+        const baseItem = findChecklistItem(checklist, nc.item_id)
+        const bloco = checklist.find(b => b.itens.some(i => i.id === nc.item_id))
+        const multa = baseItem?.multa || nc.item_multa || 'i2'
+        return {
+          nc,
+          texto: baseItem?.t || nc.item_texto || 'Item avaliado',
+          ref: baseItem?.ref || nc.item_ref || '',
+          nivel: baseItem?.nivel || nc.item_nivel || 'medio',
+          perigo: baseItem?.perigo || nc.item_perigo || '',
+          multa,
+          nr: baseItem?.nr || nc.item_nr_texto || '',
+          blocoTitulo: bloco?.titulo.split('—').slice(1).join('—').trim() || bloco?.titulo || nc.bloco_id,
+          blocoRef: bloco?.ref || nc.bloco_id,
+          valorMulta: calcularMulta(multa, empresaSelecionada.num_funcionarios || 0),
+        }
+      })
+      const multaTotal = itensTecnicos.reduce((sum, item) => sum + item.valorMulta, 0)
+      const nivelCounts = ['grave', 'alto', 'medio', 'baixo'].map(nivel => ({
+        nivel,
+        label: NIVEL_CONFIG[nivel as keyof typeof NIVEL_CONFIG]?.label || nivel,
+        count: itensTecnicos.filter(i => i.nivel === nivel).length,
+        color: corPorNivel(nivel),
+      }))
+      const multaCounts = ['i4', 'i3', 'i2', 'i1'].map(grau => ({
+        grau,
+        label: MULTA_INFO[grau as keyof typeof MULTA_INFO]?.label || grau.toUpperCase(),
+        count: itensTecnicos.filter(i => i.multa === grau).length,
+        total: itensTecnicos.filter(i => i.multa === grau).reduce((sum, item) => sum + item.valorMulta, 0),
+      })).filter(item => item.count > 0)
+
+      const color = (hex: string, target: 'text' | 'fill' | 'draw' = 'text') => {
+        const [r, g, b] = hexToRgb(hex)
+        if (target === 'text') doc.setTextColor(r, g, b)
+        if (target === 'fill') doc.setFillColor(r, g, b)
+        if (target === 'draw') doc.setDrawColor(r, g, b)
+      }
+
+      const currentPageW = () => doc.internal.pageSize.getWidth()
+      const currentPageH = () => doc.internal.pageSize.getHeight()
+
+      const text = (txt: string, x: number, yy: number, size = 9, hex = PDF.ink, style: 'normal' | 'bold' = 'normal', options?: any) => {
+        doc.setFont('helvetica', style)
+        doc.setFontSize(size)
+        color(hex, 'text')
+        doc.text(txt, x, yy, options)
+      }
+
+      const applyTextStyle = (size = 9, hex = PDF.ink, style: 'normal' | 'bold' = 'normal') => {
+        doc.setFont('helvetica', style)
+        doc.setFontSize(size)
+        color(hex, 'text')
+      }
+
+      const addHeader = (title = 'Relatório Técnico NR-18') => {
+        const w = currentPageW()
+        color('#FFFFFF', 'fill')
+        doc.rect(0, 0, w, 35, 'F')
+        if (logoData) {
+          try { doc.addImage(logoData, 'PNG', margin, 7, 38, 17) } catch {}
+        }
+        text(title, w - margin - 64, 14, 9.5, PDF.brandDark, 'bold')
+        text(`Vistoria ${vistoriaPdf.numero}`, w - margin - 64, 20, 7.5, PDF.muted)
+        color(PDF.line, 'draw')
+        doc.line(margin, 31, w - margin, 31)
+        y = 39
+      }
+
+      const addFooter = () => {
+        const total = doc.getNumberOfPages()
+        for (let i = 1; i <= total; i++) {
+          doc.setPage(i)
+          const w = currentPageW()
+          const h = currentPageH()
+          color(PDF.line, 'draw')
+          doc.line(margin, h - 14, w - margin, h - 14)
+          text('NR18 Check - Documento técnico gerado eletronicamente', margin, h - 8, 7, PDF.muted)
+          text(`Página ${i} de ${total}`, w - margin, h - 8, 7, PDF.muted, 'normal', { align: 'right' })
+        }
+      }
+
+      const ensure = (space = 24) => {
+        if (y + space <= currentPageH() - 20) return
+        doc.addPage()
+        addHeader()
+      }
+
+      const sectionTitle = (title: string) => {
+        ensure(18)
+        text(`${secao}. ${title}`, margin, y, 13, PDF.brandDark, 'bold')
+        color(PDF.brand, 'draw')
+        doc.setLineWidth(0.6)
+        doc.line(margin, y + 2.5, margin + 42, y + 2.5)
+        y += 10
+        secao += 1
+      }
+
+      const wrapText = (value: string, width: number, size = 9, style: 'normal' | 'bold' = 'normal') => {
+        doc.setFont('helvetica', style)
+        doc.setFontSize(size)
+        const source = String(value || naoInformado)
+        const lines: string[] = []
+        source.split(/\n+/).forEach(paragraphValue => {
+          const words = paragraphValue.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean)
+          let current = ''
+          words.forEach(word => {
+            if (!current) {
+              current = word
+              return
+            }
+            const candidate = `${current} ${word}`
+            if (doc.getTextWidth(candidate) <= width) {
+              current = candidate
+              return
+            }
+            lines.push(current)
+            current = word
+          })
+          if (current) lines.push(current)
+        })
+        return lines.length ? lines.flatMap(line => {
+          if (doc.getTextWidth(line) <= width) return [line]
+          const chunks: string[] = []
+          let chunk = ''
+          Array.from(line).forEach(char => {
+            if (doc.getTextWidth(chunk + char) <= width) {
+              chunk += char
+            } else {
+              if (chunk) chunks.push(chunk)
+              chunk = char
+            }
+          })
+          if (chunk) chunks.push(chunk)
+          return chunks
+        }) : [naoInformado]
+      }
+
+      const paragraph = (value: string, x = margin, width = contentW, size = 9, leading = 4.4, hex = PDF.ink) => {
+        applyTextStyle(size, hex)
+        const lines = wrapText(value || naoInformado, width, size)
+        lines.forEach((line: string) => {
+          ensure(leading + 2)
+          text(line, x, y, size, hex)
+          y += leading
+        })
+      }
+
+      const fitLines = (value: string, width: number, maxLines: number, size = 8.5, style: 'normal' | 'bold' = 'bold') => {
+        const lines = wrapText(value || naoInformado, width, size, style)
+        if (lines.length <= maxLines) return lines
+        const fitted = lines.slice(0, maxLines)
+        let last = fitted[maxLines - 1]
+        doc.setFont('helvetica', style)
+        doc.setFontSize(size)
+        while (last.length > 3 && doc.getTextWidth(last + '...') > width) {
+          last = last.slice(0, -1).trim()
+        }
+        fitted[maxLines - 1] = `${last.replace(/[.,;:\s]+$/, '')}...`
+        return fitted
+      }
+
+      const infoBox = (title: string, value: string, x: number, yy: number, w: number, h: number, fill = PDF.bg) => {
+        color(fill, 'fill')
+        color(PDF.line, 'draw')
+        doc.roundedRect(x, yy, w, h, 2.5, 2.5, 'FD')
+        text(title, x + 3, yy + 5, 7, PDF.muted, 'bold')
+        const lines = fitLines(value || naoInformado, w - 6, Math.max(1, Math.floor((h - 11) / 4.3)), 8.2, 'bold')
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8.2)
+        color(PDF.ink, 'text')
+        doc.text(lines, x + 3, yy + 10, { lineHeightFactor: 1.2 })
+      }
+
+      const metricCard = (label: string, value: string, x: number, yy: number, w: number, h: number, hex: string) => {
+        color('#FFFFFF', 'fill')
+        color(PDF.line, 'draw')
+        doc.roundedRect(x, yy, w, h, 2.5, 2.5, 'FD')
+        text(value, x + w / 2, yy + 8.5, 14, hex, 'bold', { align: 'center' })
+        text(label, x + w / 2, yy + 15, 6.6, PDF.muted, 'normal', { align: 'center' })
+      }
+
+      const bar = (x: number, yy: number, w: number, h: number, pct: number, hex: string) => {
+        color(PDF.line, 'fill')
+        doc.roundedRect(x, yy, w, h, h / 2, h / 2, 'F')
+        if (pct <= 0) return
+        color(hex, 'fill')
+        doc.roundedRect(x, yy, Math.max(0.8, (w * Math.min(100, Math.max(0, pct))) / 100), h, h / 2, h / 2, 'F')
+      }
+
+      const runTable = (options: any) => {
+        autoTable(doc, {
+          styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 2, overflow: 'linebreak', valign: 'top', textColor: hexToRgb(PDF.ink) },
+          headStyles: { fillColor: hexToRgb(PDF.brandDark), textColor: [255, 255, 255], fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: hexToRgb(PDF.bg) },
+          margin: { top: 39, left: margin, right: margin, bottom: 20 },
+          startY: y,
+          willDrawPage: (data: any) => {
+            if (data.pageNumber > 1) addHeader()
+          },
+          ...options,
+        })
+        y = ((doc as any).lastAutoTable?.finalY || y) + 8
+      }
+
+      // CAPA
+      color('#FFFFFF', 'fill')
+      doc.rect(0, 0, pageW, pageH, 'F')
+      if (logoData) {
+        try { doc.addImage(logoData, 'PNG', margin, 16, 62, 28) } catch {}
+      }
+      color(PDF.line, 'draw')
+      doc.line(margin, 54, pageW - margin, 54)
+      text('RELATÓRIO TÉCNICO DE VISTORIA', margin, 75, 17, PDF.brandDark, 'bold')
+      text('NR-18 - Segurança e Saúde no Trabalho na Indústria da Construção', margin, 86, 10.5, PDF.ink, 'bold')
+      text('Portaria MTE n. 836, de 13 de maio de 2026 | Análise técnica, evidências, criticidade e plano de ação', margin, 94, 8.2, PDF.muted)
+      infoBox('Empresa avaliada', empresaSelecionada.label, margin, 110, contentW, 28)
+      infoBox('Obra / frente de serviço', vistoria.obra?.name || naoInformado, margin, 144, contentW, 24)
+      infoBox('Data da vistoria', dataBR(vistoria.data_vistoria), margin, 176, 54, 22)
+      infoBox('Número', vistoria.numero, margin + 60, 176, 38, 22)
+      infoBox('Classificação', vistoria.classificacao || naoInformado, margin + 104, 176, 78, 22, indice >= 70 ? PDF.greenSoft : PDF.redSoft)
+      y = 214
+      text('Responsável técnico', margin, y, 10, PDF.brandDark, 'bold')
+      y += 7
+      paragraph(`${vistoria.avaliador?.full_name || naoInformado} | ${formatRegistroProfissional(vistoria.avaliador)} | ${vistoria.avaliador?.consultoria?.name || 'Consultoria não informada'}`, margin, contentW, 9)
+      y += 5
+      color(PDF.line, 'draw')
+      doc.line(margin, pageH - 46, pageW - margin, pageH - 46)
+      const notaCapa = wrapText('Este documento apresenta o resultado técnico da vistoria, a consolidação estatística, as não conformidades, a exposição estimada a autuações NR-28 e o plano de ação 5W2H.', contentW, 8)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      color(PDF.muted, 'text')
+      doc.text(notaCapa, margin, pageH - 36)
+
+      doc.addPage()
+      addHeader()
+
+      sectionTitle('Escopo, Metodologia e Critérios de Avaliação')
+      paragraph('A vistoria foi conduzida com base nos requisitos aplicáveis da NR-18 para atividades da indústria da construção, considerando observação em campo, respostas do checklist técnico, registros fotográficos e justificativas de não conformidade. O índice de conformidade considera itens conformes sobre itens aplicáveis, excluindo itens marcados como N/A quando informados.', margin, contentW)
+      y += 2
+      runTable({
+        head: [['Parâmetro', 'Informação técnica']],
+        body: [
+          ['Norma principal', 'NR-18 - Condições de segurança e saúde no trabalho na indústria da construção.'],
+          ['Referência de penalidade', 'NR-28 / CLT art. 201, com estimativa por grau de infração e quantidade de funcionários informada.'],
+          ['Objeto', vistoria.obra?.name || naoInformado],
+          ['Empresa', `${empresaSelecionada.label}${empresaSelecionada.cnpj ? ' | CNPJ ' + empresaSelecionada.cnpj : ''}`],
+          ['Etapa / setor', vistoria.etapa_obra || naoInformado],
+          ['Clima', vistoria.clima || naoInformado],
+          ['Avaliador', vistoria.avaliador?.full_name || naoInformado],
+        ],
+        columnStyles: { 0: { cellWidth: 48, fontStyle: 'bold' }, 1: { cellWidth: contentW - 48 } },
+      })
+
+      sectionTitle('Resumo Executivo e Indicadores')
+      ensure(76)
+      const metricY = y
+      const cardW = 35
+      const cardGap = 7
+      const cardsStart = margin + (contentW - (cardW * 4 + cardGap * 3)) / 2
+      metricCard('Índice geral', `${indice}%`, cardsStart, metricY, cardW, 20, corPorIndice(indice))
+      metricCard('Conformes', String(vistoria.total_conformes), cardsStart + (cardW + cardGap), metricY, cardW, 20, PDF.green)
+      metricCard('Não conformes', String(vistoria.total_nao_conformes), cardsStart + (cardW + cardGap) * 2, metricY, cardW, 20, PDF.red)
+      metricCard('Não aplica', String(vistoria.total_na), cardsStart + (cardW + cardGap) * 3, metricY, cardW, 20, PDF.muted)
+      y += 30
+      text('Distribuição de respostas', margin, y, 10, PDF.brandDark, 'bold')
+      text('Conformidade por classificação de risco', margin + 100, y, 10, PDF.brandDark, 'bold')
+      const totalRespostas = Math.max(1, vistoria.total_itens)
+      ;[
+        { label: 'Conformes', value: vistoria.total_conformes, hex: PDF.green },
+        { label: 'Não conformes', value: vistoria.total_nao_conformes, hex: PDF.red },
+        { label: 'Não aplica', value: vistoria.total_na, hex: PDF.muted },
+      ].forEach((item, idx) => {
+        const yy = y + 12 + idx * 10
+        text(item.label, margin, yy + 3, 7.5, PDF.ink)
+        bar(margin + 36, yy, 44, 4, (item.value / totalRespostas) * 100, item.hex)
+        text(`${item.value} (${Math.round((item.value / totalRespostas) * 100)}%)`, margin + 84, yy + 3.2, 7.2, item.hex, 'bold')
+      })
+      nivelCounts.forEach((item, idx) => {
+        const yy = y + 12 + idx * 10
+        text(item.label, margin + 100, yy + 3, 7.5, PDF.ink)
+        bar(margin + 128, yy, 39, 4, ncs.length ? (item.count / ncs.length) * 100 : 0, item.color)
+        text(String(item.count), margin + 171, yy + 3.4, 7.5, item.color, 'bold')
+      })
+      y += 48
+
+      sectionTitle('Conformidade por Seção da NR-18')
+      blocoStats.forEach((s: any) => {
+        ensure(12)
+        const titulo = s.bloco.titulo.split('—').slice(1).join('—').trim() || s.bloco.titulo
+        text(`${s.bloco.ref} - ${titulo}`, margin, y, 7.5, PDF.ink)
+        text(`${s.indice}% | ${s.conformes} C | ${s.ncs} NC | ${s.na} N/A`, pageW - margin - 48, y, 7.2, corPorIndice(s.indice), 'bold')
+        y += 3
+        bar(margin, y, contentW, 4, s.indice, corPorIndice(s.indice))
+        y += 8
+      })
+
+      sectionTitle('Análise Técnica de Não Conformidades')
+      if (itensTecnicos.length === 0) {
+        paragraph('Não foram registradas não conformidades atribuídas a esta empresa no escopo selecionado.')
+      } else {
+        runTable({
+          head: [['#', 'Ref.', 'Nível', 'Perigo', 'Requisito / observação técnica']],
+          body: itensTecnicos.map((item, idx) => [
+            String(idx + 1),
+            item.ref,
+            prioridadePorNivel(item.nivel),
+            item.perigo || naoInformado,
+            `${item.texto}${item.nc.observacao ? '\nObservação: ' + item.nc.observacao : ''}`,
+          ]),
+          columnStyles: {
+            0: { cellWidth: 9, halign: 'center' },
+            1: { cellWidth: 22 },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 26 },
+            4: { cellWidth: contentW - 77 },
+          },
+        })
+      }
+
+      if (itensTecnicos.length > 0) {
+        sectionTitle('Detalhamento Legal, Evidências e Criticidade')
+        for (let idx = 0; idx < itensTecnicos.length; idx += 1) {
+          const item = itensTecnicos[idx]
+          ensure(58)
+          color(item.nivel === 'grave' ? PDF.redSoft : item.nivel === 'alto' ? PDF.amberSoft : PDF.blueSoft, 'fill')
+          color(PDF.line, 'draw')
+          doc.roundedRect(margin, y, contentW, 9, 2, 2, 'FD')
+          text(`${idx + 1}. ${item.ref} | ${prioridadePorNivel(item.nivel)} | ${item.blocoRef}`, margin + 2.5, y + 6, 8, corPorNivel(item.nivel), 'bold')
+          text(`Multa estimada: ${formatMoeda(item.valorMulta)}`, pageW - margin - 2, y + 6, 7.5, PDF.red, 'bold', { align: 'right' })
+          y += 13
+          const detailX = margin + 2
+          const detailW = contentW - 4
+          paragraph(`Requisito avaliado: ${item.texto}`, detailX, detailW, 8.2, 4)
+          if (item.nr) paragraph(`Texto legal de referência: ${item.nr}`, detailX, detailW, 7.5, 3.8, PDF.muted)
+          if (item.nc.observacao) paragraph(`Evidência/observação registrada: ${item.nc.observacao}`, detailX, detailW, 8.2, 4, PDF.ink)
+          const fotos = item.nc.fotos || []
+          if (fotos.length > 0) {
+            ensure(34)
+            text('Evidências fotográficas:', margin, y, 8, PDF.brandDark, 'bold')
+            y += 4
+            const imgs = await Promise.all(fotos.slice(0, 3).map((f: { url: string }) => imageToDataUrl(f.url)))
+            imgs.forEach((img, imgIdx) => {
+              if (!img) return
+              try {
+                doc.addImage(img, 'JPEG', margin + imgIdx * 34, y, 30, 24)
+              } catch {
+                try { doc.addImage(img, 'PNG', margin + imgIdx * 34, y, 30, 24) } catch {}
+              }
+            })
+            y += 29
+          }
+          y += 4
+        }
+      }
+
+      sectionTitle('Exposição Estimada a Autuações - NR-28')
+      if (itensTecnicos.length === 0) {
+        paragraph('Sem não conformidades atribuíveis para estimativa de autuação.')
+      } else {
+        if (!empresaSelecionada.num_funcionarios) {
+          paragraph('Atenção: número de funcionários não informado para a empresa selecionada. Foi aplicado fator base para estimativa de referência.', margin, contentW)
+        }
+        runTable({
+          head: [['Grau', 'Qtd.', 'Subtotal estimado', 'Observação']],
+          body: multaCounts.map(item => [
+            item.label,
+            String(item.count),
+            formatMoeda(item.total),
+            MULTA_INFO[item.grau as keyof typeof MULTA_INFO]?.desc || '',
+          ]).concat([['TOTAL', String(itensTecnicos.length), formatMoeda(multaTotal), 'Estimativa referencial para orientação técnica.']]),
+          columnStyles: {
+            0: { cellWidth: 30, fontStyle: 'bold' },
+            1: { cellWidth: 18, halign: 'center' },
+            2: { cellWidth: 36, halign: 'right', fontStyle: 'bold' },
+            3: { cellWidth: contentW - 84 },
+          },
+        })
+      }
+
+      sectionTitle('Plano de Ação 5W2H')
+      if (itensTecnicos.length === 0) {
+        paragraph('Plano preventivo: manter rotina de inspeções, evidências documentais, treinamentos e controle de contratadas conforme NR-18.')
+      } else {
+        paragraph('O plano de ação detalhado foi movido para o Anexo I, em página horizontal, para preservar a leitura integral das colunas 5W2H e evitar cortes de conteúdo.')
+      }
+
+      sectionTitle('Parecer Técnico Conclusivo')
+      paragraph(parecer || 'Parecer técnico não informado.', margin, contentW, 9, 4.6)
+
+      ensure(95)
+      sectionTitle('Responsabilidade Técnica e Encerramento')
+      paragraph('O presente relatório consolida as condições observadas na data da vistoria e deve ser utilizado como base para tratamento das não conformidades, definição de responsáveis, prazos e reavaliação de eficácia das medidas implementadas. A regularização deve considerar hierarquia de controles, documentação exigível, treinamentos, proteções coletivas, EPC/EPI e demais requisitos aplicáveis da NR-18.')
+      y += 18
+      color(PDF.line, 'draw')
+      doc.line(margin + 20, y, pageW - margin - 20, y)
+      y += 7
+      text(vistoria.avaliador?.full_name || 'Responsável técnico', pageW / 2, y, 10, PDF.ink, 'bold', { align: 'center' })
+      y += 5
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      color(PDF.muted, 'text')
+      doc.text(formatRegistroProfissional(vistoria.avaliador), pageW / 2, y, { align: 'center' })
+      y += 5
+      doc.text(`${vistoria.avaliador?.consultoria?.name || 'Consultoria'} | Emitido em ${dataBR(new Date().toISOString().split('T')[0])}`, pageW / 2, y, { align: 'center' })
+
+      if (itensTecnicos.length > 0) {
+        doc.addPage('a4', 'landscape')
+        const addAnexoHeader = () => {
+          const w = currentPageW()
+          color('#FFFFFF', 'fill')
+          doc.rect(0, 0, w, 32, 'F')
+          if (logoData) {
+            try { doc.addImage(logoData, 'PNG', margin, 7, 36, 16) } catch {}
+          }
+          text('ANEXO I - Plano de Ação 5W2H', w / 2, 15, 12, PDF.brandDark, 'bold', { align: 'center' })
+          text(`${empresaSelecionada.label} | Vistoria ${vistoriaPdf.numero}`, w / 2, 22, 7.5, PDF.muted, 'normal', { align: 'center' })
+          color(PDF.line, 'draw')
+          doc.line(margin, 29, w - margin, 29)
+        }
+        addAnexoHeader()
+        const landscapeW = currentPageW()
+        const landscapeContentW = landscapeW - 24
+        autoTable(doc, {
+          startY: 36,
+          margin: { top: 36, left: 12, right: 12, bottom: 18 },
+          head: [['O que', 'Por que', 'Onde', 'Quem', 'Quando', 'Como', 'Quanto']],
+          body: itensTecnicos.map((item, idx) => [
+            `${idx + 1}. ${item.ref}\n${acaoRecomendada(item.texto, item.perigo)}`,
+            `Eliminar a não conformidade ${item.ref}, reduzir risco ${prioridadePorNivel(item.nivel).toLowerCase()} e restabelecer aderência ao requisito NR-18.`,
+            `${item.blocoRef} - ${item.blocoTitulo}`,
+            empresaSelecionada.label,
+            prazoPorNivel(item.nivel),
+            'Corrigir física ou documentalmente, registrar evidência fotográfica, validar por responsável técnico e reavaliar o item no sistema.',
+            custoEstimado(item.multa, empresaSelecionada.num_funcionarios || 0),
+          ]),
+          styles: { font: 'helvetica', fontSize: 6.7, cellPadding: 1.6, overflow: 'linebreak', valign: 'top', textColor: hexToRgb(PDF.ink), lineColor: hexToRgb(PDF.line), lineWidth: 0.1 },
+          headStyles: { fillColor: hexToRgb(PDF.brandDark), textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+          alternateRowStyles: { fillColor: hexToRgb(PDF.bg) },
+          columnStyles: {
+            0: { cellWidth: landscapeContentW * 0.18 },
+            1: { cellWidth: landscapeContentW * 0.16 },
+            2: { cellWidth: landscapeContentW * 0.12 },
+            3: { cellWidth: landscapeContentW * 0.12 },
+            4: { cellWidth: landscapeContentW * 0.09, halign: 'center' },
+            5: { cellWidth: landscapeContentW * 0.2 },
+            6: { cellWidth: landscapeContentW * 0.13 },
+          },
+          willDrawPage: addAnexoHeader,
+        })
+      }
+
+      addFooter()
+      doc.save(`relatorio-nr18-${sanitizeFileName(vistoria.numero)}-${sanitizeFileName(empresaSelecionada.label)}.pdf`)
+      toast.success('PDF técnico gerado!')
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao gerar PDF técnico')
+    } finally {
+      setGerando(false)
+    }
+  }
 
   async function criarReavaliacao(blocoId?: string) {
     if (!vistoria?.obra?.id) return
@@ -333,7 +928,7 @@ export default function RelatorioPage() {
           <div className="max-w-4xl mx-auto flex items-center gap-3">
             <button onClick={() => router.push('/dashboard/vistorias/' + vistoriaId)} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"><ArrowLeft size={20} /></button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-sm font-bold text-[var(--text-primary)]">Relatorio Tecnico NR-18</h1>
+              <h1 className="text-sm font-bold text-[var(--text-primary)]">Relatório Técnico NR-18</h1>
               <p className="text-xs text-[var(--text-muted)]">Vistoria {vistoria.numero}</p>
             </div>
             {/* Seletor de empresa */}
@@ -370,12 +965,12 @@ export default function RelatorioPage() {
           <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6">
             <div className="flex items-start justify-between gap-4 mb-5">
               <div>
-                <div className="flex items-center gap-2 mb-1"><HardHat size={16} className="text-[var(--brand)]" /><span className="text-xs text-[var(--text-muted)] uppercase tracking-wider">Relatorio Tecnico de Vistoria</span></div>
-                <h2 className="text-2xl font-bold text-[var(--text-primary)]">NR-18 — Seguranca na Construcao Civil</h2>
+                <div className="flex items-center gap-2 mb-1"><HardHat size={16} className="text-[var(--brand)]" /><span className="text-xs text-[var(--text-muted)] uppercase tracking-wider">Relatório Técnico de Vistoria</span></div>
+                <h2 className="text-2xl font-bold text-[var(--text-primary)]">NR-18 — Segurança na Construção Civil</h2>
                 <p className="text-sm text-[var(--text-secondary)] mt-1">Portaria MTE n. 836, de 13 de maio de 2026</p>
                 {empresas.length > 1 && (
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="text-xs text-[var(--text-muted)]">Relatorio para:</span>
+                    <span className="text-xs text-[var(--text-muted)]">Relatório para:</span>
                     <span className="text-xs font-semibold text-[var(--brand)] bg-[var(--brand)]/10 px-2 py-0.5 rounded-full">{empresaSelecionada?.label}</span>
                   </div>
                 )}
@@ -390,7 +985,7 @@ export default function RelatorioPage() {
                 <div className="text-xs text-[var(--text-muted)] mb-1">Empresa</div>
                 <div className="text-sm font-bold text-[var(--text-primary)]">{empresaSelecionada?.label}</div>
                 <div className="text-xs text-[var(--text-secondary)] mt-0.5">{empresaSelecionada?.cnpj}</div>
-                {empresaSelecionada?.num_funcionarios ? <div className="text-xs text-[var(--text-muted)]">{empresaSelecionada.num_funcionarios} funcionarios na obra</div> : null}
+                {empresaSelecionada?.num_funcionarios ? <div className="text-xs text-[var(--text-muted)]">{empresaSelecionada.num_funcionarios} funcionários na obra</div> : null}
               </div>
               <div className="bg-[var(--bg-primary)] rounded-xl p-4">
                 <div className="text-xs text-[var(--text-muted)] mb-1">Obra</div>
@@ -398,17 +993,17 @@ export default function RelatorioPage() {
                 {vistoria.etapa_obra && <div className="text-xs text-[var(--text-secondary)] mt-0.5">{vistoria.etapa_obra}</div>}
               </div>
               <div className="bg-[var(--bg-primary)] rounded-xl p-4">
-                <div className="flex items-center gap-1.5 mb-1"><CloudSun size={12} className="text-[var(--text-muted)]" /><span className="text-xs text-[var(--text-muted)]">Condicoes climaticas</span></div>
+                <div className="flex items-center gap-1.5 mb-1"><CloudSun size={12} className="text-[var(--text-muted)]" /><span className="text-xs text-[var(--text-muted)]">Condições climáticas</span></div>
                 <div className="text-sm text-[var(--text-primary)]">{vistoria.clima || '—'}</div>
               </div>
               <div className="bg-[var(--bg-primary)] rounded-xl p-4">
-                <div className="text-xs text-[var(--text-muted)] mb-1">Responsavel tecnico</div>
+                <div className="text-xs text-[var(--text-muted)] mb-1">Responsável técnico</div>
                 <div className="text-sm font-bold text-[var(--text-primary)]">{vistoria.avaliador?.full_name || '—'}</div>
-                <div className="text-xs text-[var(--text-secondary)] mt-0.5">{vistoria.avaliador?.crea ? 'CREA ' + vistoria.avaliador.crea : vistoria.avaliador?.registro_mte ? 'MTE ' + vistoria.avaliador.registro_mte : ''}</div>
+                <div className="text-xs text-[var(--text-secondary)] mt-0.5">{formatRegistroProfissional(vistoria.avaliador)}</div>
                 <div className="text-xs text-[var(--text-muted)]">{vistoria.avaliador?.consultoria?.name}</div>
               </div>
             </div>
-            {vistoria.observacoes_gerais && <div className="mt-3 bg-[var(--bg-primary)] rounded-xl p-3"><div className="text-xs text-[var(--text-muted)] mb-1">Observacoes gerais</div><p className="text-sm text-[var(--text-primary)]">{vistoria.observacoes_gerais}</p></div>}
+            {vistoria.observacoes_gerais && <div className="mt-3 bg-[var(--bg-primary)] rounded-xl p-3"><div className="text-xs text-[var(--text-muted)] mb-1">Observações gerais</div><p className="text-sm text-[var(--text-primary)]">{vistoria.observacoes_gerais}</p></div>}
           </div>
 
           {/* 2. INDICE */}
@@ -417,13 +1012,13 @@ export default function RelatorioPage() {
               <div className="flex-shrink-0 w-56"><GaugeChart value={indice} /></div>
               <div className="flex-1 w-full">
                 <div className={'text-2xl font-bold mb-0.5 ' + classColor}>{vistoria.classificacao}</div>
-                <div className="text-xs text-[var(--text-muted)] mb-4">Classificacao da vistoria NR-18</div>
+                <div className="text-xs text-[var(--text-muted)] mb-4">Classificação da vistoria NR-18</div>
                 <div className="grid grid-cols-4 gap-2 text-center mb-4">
                   {[
                     { label: 'Avaliados', val: vistoria.total_itens, color: 'text-[var(--text-primary)]' },
                     { label: 'Conformes', val: vistoria.total_conformes, color: 'text-[#3B6D11]' },
-                    { label: 'Nao conformes', val: vistoria.total_nao_conformes, color: 'text-[#A32D2D]' },
-                    { label: 'Nao aplica', val: vistoria.total_na, color: 'text-[var(--text-secondary)]' },
+                    { label: 'Não conformes', val: vistoria.total_nao_conformes, color: 'text-[#A32D2D]' },
+                    { label: 'Não aplica', val: vistoria.total_na, color: 'text-[var(--text-secondary)]' },
                   ].map((c, i) => (
                     <div key={i} className="bg-[var(--bg-primary)]/60 rounded-xl py-3">
                       <div className={'text-2xl font-bold ' + c.color}>{c.val}</div>
@@ -472,10 +1067,10 @@ export default function RelatorioPage() {
           {/* 3. NCs POR NIVEL */}
           {ncsEmpresa.length > 0 && (
             <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Distribuicao das Nao Conformidades — {empresaSelecionada?.label}</h3>
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Distribuição das Não Conformidades — {empresaSelecionada?.label}</h3>
               <div className="grid grid-cols-3 gap-3 mb-4">
                 {[
-                  { label: 'Grave', count: ncsGrave, bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', desc: 'Acao imediata' },
+                  { label: 'Grave', count: ncsGrave, bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', desc: 'Ação imediata' },
                   { label: 'Alto',  count: ncsAlto,  bg: 'bg-[#FAEEDA]', text: 'text-[#633806]', desc: 'Curto prazo' },
                   { label: 'Medio', count: ncsMedio, bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', desc: 'Programado' },
                 ].map((n, i) => (
@@ -498,7 +1093,7 @@ export default function RelatorioPage() {
 
           {/* 4. CONFORMIDADE POR BLOCO */}
           <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-5">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Conformidade por Secao da NR-18</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Conformidade por Seção da NR-18</h3>
             {blocoStats.map((s: any) => {
               const color = s.indice >= 90 ? '#3B6D11' : s.indice >= 70 ? '#854F0B' : s.indice >= 50 ? '#A32D2D' : '#791F1F'
               const titulo = s.bloco.titulo.split('—').slice(1).join('—').trim() || s.bloco.titulo
@@ -535,7 +1130,7 @@ export default function RelatorioPage() {
           <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Parecer Tecnico Conclusivo</h3>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Parecer Técnico Conclusivo</h3>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5">Editavel — clique no texto para modificar</p>
               </div>
               <div className="flex items-center gap-2">
@@ -555,7 +1150,7 @@ export default function RelatorioPage() {
             {gerandoIA && !parecer ? (
               <div className="bg-[var(--bg-primary)] rounded-xl p-6 text-center">
                 <Loader2 size={24} className="animate-spin text-[var(--brand)] mx-auto mb-2" />
-                <p className="text-xs text-[var(--text-muted)]">Gerando parecer tecnico com IA...</p>
+                <p className="text-xs text-[var(--text-muted)]">Gerando parecer técnico com IA...</p>
               </div>
             ) : (
               <textarea
@@ -563,7 +1158,7 @@ export default function RelatorioPage() {
                 onChange={e => { setParecer(e.target.value); setParecerEditado(true) }}
                 rows={8}
                 className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] focus:border-[var(--brand)]/50 rounded-xl text-sm text-[var(--text-primary)] leading-relaxed focus:outline-none transition resize-none"
-                placeholder="Parecer tecnico sera gerado automaticamente..."
+                placeholder="Parecer técnico será gerado automaticamente..."
               />
             )}
           </div>
@@ -573,7 +1168,7 @@ export default function RelatorioPage() {
             <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
               <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-2">
                 <XCircle size={16} className="text-[#A32D2D]" />
-                <h3 className="font-semibold text-[var(--text-primary)] text-sm">Nao Conformidades — {empresaSelecionada?.label} ({ncsEmpresa.length})</h3>
+                <h3 className="font-semibold text-[var(--text-primary)] text-sm">Não Conformidades — {empresaSelecionada?.label} ({ncsEmpresa.length})</h3>
               </div>
               <div className="divide-y divide-[var(--border)]">
                 {ncsEmpresa.map((nc, idx) => {
@@ -611,7 +1206,7 @@ export default function RelatorioPage() {
                           </div>
                           {nc.observacao && (
                             <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-3 mb-2">
-                              <div className="text-xs text-[var(--text-muted)] mb-1">Observacao do tecnico</div>
+                              <div className="text-xs text-[var(--text-muted)] mb-1">Observação do técnico</div>
                               <p className="text-sm text-[var(--text-primary)] italic">"{nc.observacao}"</p>
                             </div>
                           )}
@@ -659,15 +1254,15 @@ export default function RelatorioPage() {
                 <div className="px-5 py-4 border-b border-[var(--border)]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold text-[var(--text-primary)] text-sm">Relatorio de Autuacoes e Multas — NR-28</h3>
-                      <p className="text-xs text-[var(--text-muted)] mt-0.5">{empresaSelecionada?.label} · {numFunc > 0 ? numFunc + ' funcionarios' : 'funcionarios nao informados'}</p>
+                      <h3 className="font-semibold text-[var(--text-primary)] text-sm">Relatório de Autuações e Multas — NR-28</h3>
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">{empresaSelecionada?.label} · {numFunc > 0 ? numFunc + ' funcionários' : 'funcionários não informados'}</p>
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-[var(--text-muted)]">Total estimado</div>
                       <div className="text-xl font-bold text-[#A32D2D]">{formatMoeda(totalGeral)}</div>
                     </div>
                   </div>
-                  {numFunc === 0 && <div className="mt-2 bg-amber-900/20 border border-amber-500/30 rounded-xl px-3 py-2 text-xs text-amber-400">⚠ Numero de funcionarios nao informado — usando fator base. Cadastre o numero de funcionarios para calculo preciso.</div>}
+                  {numFunc === 0 && <div className="mt-2 bg-amber-900/20 border border-amber-500/30 rounded-xl px-3 py-2 text-xs text-amber-400">⚠ Número de funcionários não informado — usando fator base. Cadastre o número de funcionários para cálculo preciso.</div>}
                 </div>
                 <div className="p-5 space-y-5">
                   {porGrau.map(({ grau, itens, subtotal }) => {
@@ -696,7 +1291,7 @@ export default function RelatorioPage() {
                                   </div>
                                   <div className="text-right flex-shrink-0">
                                     <div className={'text-base font-bold ' + cfg.text}>{formatMoeda(it.valor)}</div>
-                                    <div className="text-xs text-[var(--text-muted)]">por infracao</div>
+                                    <div className="text-xs text-[var(--text-muted)]">por infração</div>
                                     {numFunc > 0 && <div className="text-xs text-[var(--text-muted)] mt-0.5">fator x{fatorLabel}</div>}
                                   </div>
                                 </div>
@@ -725,7 +1320,7 @@ export default function RelatorioPage() {
                         </div>
                         <div className="text-2xl font-bold text-[#A32D2D]">{formatMoeda(totalGeral)}</div>
                       </div>
-                      <div className="mt-3 text-xs text-[var(--text-muted)] leading-relaxed">* Valores calculados com base na tabela NR-28 / CLT art. 201, considerando {numFunc > 0 ? numFunc + ' funcionarios' : 'fator base'}. Sujeitos a atualizacao pelo MTE. Estimativa de referencia para fins de orientacao tecnica.</div>
+                      <div className="mt-3 text-xs text-[var(--text-muted)] leading-relaxed">* Valores calculados com base na tabela NR-28 / CLT art. 201, considerando {numFunc > 0 ? numFunc + ' funcionários' : 'fator base'}. Sujeitos a atualização pelo MTE. Estimativa de referência para fins de orientação técnica.</div>
                     </div>
                   </div>
                 </div>
@@ -735,11 +1330,11 @@ export default function RelatorioPage() {
 
           {/* 8. ASSINATURA */}
           <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-6">Assinatura e Responsabilidade Tecnica</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-6">Assinatura e Responsabilidade Técnica</h3>
             <div className="flex flex-col items-center gap-2">
               <div className="w-72 border-b-2 border-slate-500 mb-2" />
               <div className="text-base font-bold text-[var(--text-primary)]">{vistoria.avaliador?.full_name}</div>
-              <div className="text-sm text-[var(--text-secondary)]">{vistoria.avaliador?.crea ? 'CREA ' + vistoria.avaliador.crea : vistoria.avaliador?.registro_mte ? 'Registro MTE n. ' + vistoria.avaliador.registro_mte : 'Tecnico de Seguranca do Trabalho'}</div>
+              <div className="text-sm text-[var(--text-secondary)]">{formatRegistroProfissional(vistoria.avaliador)}</div>
               <div className="text-sm text-[var(--text-secondary)]">{vistoria.avaliador?.consultoria?.name}</div>
               <div className="text-xs text-[var(--text-muted)] mt-3">Emitido em {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
               <div className="text-xs text-[var(--text-muted)] mt-1">Documento gerado pelo sistema NR18 Check — Portaria MTE n. 836/2026</div>

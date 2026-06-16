@@ -11,6 +11,7 @@ import {
   BarChart3,
   CheckCircle2,
   ClipboardList,
+  Download,
   GitCompareArrows,
   Loader2,
   RefreshCw,
@@ -53,6 +54,7 @@ interface VistoriaResumo {
 
 interface ItemRow {
   id: string
+  vistoria_id?: string
   item_id: string
   bloco_id: string
   status: Status
@@ -110,6 +112,58 @@ const NIVEL_LABEL: Record<string, string> = {
   baixo: 'Baixo',
 }
 
+const PDF = {
+  brand: '#2563EB',
+  brandDark: '#12356F',
+  ink: '#111827',
+  muted: '#64748B',
+  line: '#D9E2EC',
+  bg: '#F6F8FC',
+  green: '#2F7D32',
+  amber: '#B7791F',
+  red: '#A32D2D',
+  blue: '#185FA5',
+  cyan: '#0E7490',
+  orange: '#C2410C',
+  greenSoft: '#EAF3DE',
+  amberSoft: '#FAEEDA',
+  redSoft: '#FCEBEB',
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '')
+  return [
+    parseInt(clean.slice(0, 2), 16),
+    parseInt(clean.slice(2, 4), 16),
+    parseInt(clean.slice(4, 6), 16),
+  ]
+}
+
+function sanitizeFileName(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 90)
+}
+
+async function imageToDataUrl(src: string): Promise<string | null> {
+  try {
+    const res = await fetch(src)
+    if (!res.ok) return null
+    const blob = await res.blob()
+    return await new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
+
 function nivelPeso(nivel?: string | null) {
   if (nivel === 'grave') return 4
   if (nivel === 'alto') return 3
@@ -147,11 +201,14 @@ export default function ComparativoPage() {
 
   const [loading, setLoading] = useState(true)
   const [criando, setCriando] = useState(false)
+  const [gerandoPDF, setGerandoPDF] = useState(false)
   const [checklist, setChecklist] = useState<ChecklistBloco[]>(CHECKLIST)
   const [atual, setAtual] = useState<VistoriaResumo | null>(null)
   const [anterior, setAnterior] = useState<VistoriaResumo | null>(null)
   const [itensAtual, setItensAtual] = useState<ItemRow[]>([])
   const [itensAnterior, setItensAnterior] = useState<ItemRow[]>([])
+  const [historicoVistorias, setHistoricoVistorias] = useState<VistoriaResumo[]>([])
+  const [historicoItens, setHistoricoItens] = useState<ItemRow[]>([])
 
   useEffect(() => { loadData() }, [vistoriaId])
 
@@ -170,28 +227,38 @@ export default function ComparativoPage() {
       const modelo = await loadChecklistModelo(supabase, currentRow.consultoria_id)
       setChecklist(modelo)
 
-      const { data: previous } = await supabase
+      const { data: allInspections } = await supabase
         .from('vistorias')
         .select('id, numero, data_vistoria, indice_conformidade, classificacao, total_nao_conformes, obra_id, consultoria_id, clima, etapa_obra, obra:obras(name, empresa_cliente:empresas_clientes(name))')
         .eq('obra_id', currentRow.obra_id)
         .in('status', ['concluida', 'assinada'])
-        .neq('id', vistoriaId)
         .lte('data_vistoria', currentRow.data_vistoria)
-        .order('data_vistoria', { ascending: false })
-        .limit(1)
+        .order('data_vistoria', { ascending: true })
 
-      const previousRow = previous?.[0] as any as VistoriaResumo | undefined
+      const historyMap = new Map<string, VistoriaResumo>()
+      ;((allInspections || []) as any as VistoriaResumo[]).forEach(v => historyMap.set(v.id, v))
+      historyMap.set(currentRow.id, currentRow)
+      const historyRows = Array.from(historyMap.values())
+        .filter(v => v.data_vistoria <= currentRow.data_vistoria)
+        .sort((a, b) => {
+          const dateOrder = a.data_vistoria.localeCompare(b.data_vistoria)
+          return dateOrder !== 0 ? dateOrder : a.numero.localeCompare(b.numero)
+        })
+      setHistoricoVistorias(historyRows)
+
+      const currentIndex = historyRows.findIndex(v => v.id === vistoriaId)
+      const previousRow = currentIndex > 0 ? historyRows[currentIndex - 1] : undefined
       if (previousRow) setAnterior(previousRow)
 
-      const [{ data: currentItems }, { data: previousItems }] = await Promise.all([
-        supabase.from('vistoria_itens').select('id, item_id, bloco_id, status, observacao, item_texto, item_ref, item_nivel, item_multa').eq('vistoria_id', vistoriaId),
-        previousRow
-          ? supabase.from('vistoria_itens').select('id, item_id, bloco_id, status, observacao, item_texto, item_ref, item_nivel, item_multa').eq('vistoria_id', previousRow.id)
-          : Promise.resolve({ data: [] }),
-      ])
+      const historyIds = historyRows.map(v => v.id)
+      const { data: allItems } = historyIds.length > 0
+        ? await supabase.from('vistoria_itens').select('id, vistoria_id, item_id, bloco_id, status, observacao, item_texto, item_ref, item_nivel, item_multa').in('vistoria_id', historyIds)
+        : { data: [] }
+      const items = (allItems || []) as ItemRow[]
 
-      setItensAtual((currentItems || []) as ItemRow[])
-      setItensAnterior((previousItems || []) as ItemRow[])
+      setHistoricoItens(items)
+      setItensAtual(items.filter(item => item.vistoria_id === vistoriaId))
+      setItensAnterior(previousRow ? items.filter(item => item.vistoria_id === previousRow.id) : [])
     } catch (err) {
       console.error(err)
       toast.error('Erro ao carregar comparativo')
@@ -301,6 +368,66 @@ export default function ComparativoPage() {
     }
   }, [itensAnterior, itensAtual, checklist, anterior?.indice_conformidade, atual?.indice_conformidade])
 
+  const historico = useMemo(() => {
+    const inspecoes = [...historicoVistorias]
+      .sort((a, b) => {
+        const dateOrder = a.data_vistoria.localeCompare(b.data_vistoria)
+        return dateOrder !== 0 ? dateOrder : a.numero.localeCompare(b.numero)
+      })
+      .map(v => {
+        const itens = historicoItens.filter(item => item.vistoria_id === v.id)
+        const conformes = itens.filter(i => i.status === 'C').length
+        const ncs = itens.filter(i => i.status === 'NC').length
+        const na = itens.filter(i => i.status === 'NA').length
+        const aplicaveis = itens.length - na
+        const indice = v.indice_conformidade ?? (aplicaveis > 0 ? Math.round((conformes / aplicaveis) * 10000) / 100 : 0)
+        return {
+          ...v,
+          total: itens.length,
+          conformes,
+          ncs,
+          na,
+          indice,
+        }
+      })
+
+    const transicoes = inspecoes.slice(1).map((atualInspecao, idx) => {
+      const anteriorInspecao = inspecoes[idx]
+      const anteriorMap = new Map(historicoItens.filter(i => i.vistoria_id === anteriorInspecao.id).map(i => [i.item_id, i]))
+      const atualMap = new Map(historicoItens.filter(i => i.vistoria_id === atualInspecao.id).map(i => [i.item_id, i]))
+      const ids = Array.from(new Set([...Array.from(anteriorMap.keys()), ...Array.from(atualMap.keys())]))
+      const linhas = ids.map(itemId => {
+        const antes = anteriorMap.get(itemId)
+        const depois = atualMap.get(itemId)
+        const ref = depois || antes
+        const meta = itemMeta(checklist, ref)
+        let tipo: 'melhoria' | 'piora' | 'resolvida' | 'nova' | 'persistente' | 'mantida' = 'mantida'
+        if (antes?.status === 'NC' && depois?.status === 'C') tipo = 'resolvida'
+        else if (antes?.status === 'NC' && depois?.status === 'NA') tipo = 'melhoria'
+        else if (antes?.status === 'C' && depois?.status === 'NC') tipo = 'piora'
+        else if (!antes && depois?.status === 'NC') tipo = 'nova'
+        else if (antes?.status === 'NC' && depois?.status === 'NC') tipo = 'persistente'
+        else if (antes?.status !== depois?.status) tipo = depois?.status === 'NC' ? 'piora' : 'melhoria'
+        return { itemId, antes, depois, meta, tipo }
+      })
+      return {
+        de: anteriorInspecao,
+        para: atualInspecao,
+        deltaIndice: Math.round(((atualInspecao.indice || 0) - (anteriorInspecao.indice || 0)) * 100) / 100,
+        deltaNCs: (atualInspecao.ncs || 0) - (anteriorInspecao.ncs || 0),
+        resolvidas: linhas.filter(l => l.tipo === 'resolvida').length,
+        melhorias: linhas.filter(l => l.tipo === 'melhoria' || l.tipo === 'resolvida').length,
+        pioras: linhas.filter(l => l.tipo === 'piora' || l.tipo === 'nova').length,
+        novas: linhas.filter(l => l.tipo === 'nova').length,
+        persistentes: linhas.filter(l => l.tipo === 'persistente').length,
+      }
+    })
+
+    const ultima = inspecoes[inspecoes.length - 1] || null
+    const primeira = inspecoes[0] || null
+    return { inspecoes, transicoes, primeira, ultima }
+  }, [historicoVistorias, historicoItens, checklist])
+
   async function criarReavaliacaoCompleta() {
     if (!atual) return
     setCriando(true)
@@ -326,6 +453,389 @@ export default function ComparativoPage() {
       toast.error(err.message || 'Erro ao criar reavaliação')
     } finally {
       setCriando(false)
+    }
+  }
+
+  async function exportarPDF() {
+    if (!atual) return
+    if (historico.inspecoes.length < 2) {
+      toast.error('Não há histórico suficiente para gerar comparativo')
+      return
+    }
+    setGerandoPDF(true)
+    try {
+      const [{ jsPDF }, autoTableModule] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ])
+      const autoTable = (autoTableModule.default || autoTableModule.autoTable) as any
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
+      const logoData = await imageToDataUrl('/branding/login-logo-login.png')
+      const margin = 14
+      const pageW = doc.internal.pageSize.getWidth()
+      const pageH = doc.internal.pageSize.getHeight()
+      const contentW = pageW - margin * 2
+      const inspecoesHistoricas = historico.inspecoes
+      const transicoesHistoricas = historico.transicoes
+      const primeiraInspecao = (historico.primeira || atual) as any
+      const ultimaInspecao = (historico.ultima || atual) as any
+      let y = margin
+      let secao = 1
+
+      const currentPageW = () => doc.internal.pageSize.getWidth()
+      const currentPageH = () => doc.internal.pageSize.getHeight()
+      const color = (hex: string, target: 'text' | 'fill' | 'draw' = 'text') => {
+        const [r, g, b] = hexToRgb(hex)
+        if (target === 'text') doc.setTextColor(r, g, b)
+        if (target === 'fill') doc.setFillColor(r, g, b)
+        if (target === 'draw') doc.setDrawColor(r, g, b)
+      }
+      const text = (value: string, x: number, yy: number, size = 9, hex = PDF.ink, style: 'normal' | 'bold' = 'normal', options?: any) => {
+        doc.setFont('helvetica', style)
+        doc.setFontSize(size)
+        color(hex, 'text')
+        doc.text(value, x, yy, options)
+      }
+      const wrapText = (value: string, width: number, size = 9, style: 'normal' | 'bold' = 'normal') => {
+        doc.setFont('helvetica', style)
+        doc.setFontSize(size)
+        const lines: string[] = []
+        String(value || 'Não informado').split(/\n+/).forEach(part => {
+          const words = part.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean)
+          let current = ''
+          words.forEach(word => {
+            if (!current) { current = word; return }
+            const candidate = `${current} ${word}`
+            if (doc.getTextWidth(candidate) <= width) current = candidate
+            else { lines.push(current); current = word }
+          })
+          if (current) lines.push(current)
+        })
+        return lines.length ? lines : ['Não informado']
+      }
+      const ensure = (space = 24) => {
+        if (y + space <= currentPageH() - 20) return
+        doc.addPage()
+        addHeader()
+      }
+      const paragraph = (value: string, x = margin, width = contentW, size = 9, leading = 4.5, hex = PDF.ink) => {
+        wrapText(value, width, size).forEach(line => {
+          ensure(leading + 2)
+          text(line, x, y, size, hex)
+          y += leading
+        })
+      }
+      const addHeader = (title = 'Relatório Comparativo NR-18') => {
+        const w = currentPageW()
+        color('#FFFFFF', 'fill')
+        doc.rect(0, 0, w, 35, 'F')
+        if (logoData) {
+          try { doc.addImage(logoData, 'PNG', margin, 7, 38, 17) } catch {}
+        }
+        text(title, w - margin - 68, 14, 9.5, PDF.brandDark, 'bold')
+        text(`Histórico consolidado: ${inspecoesHistoricas.length} inspeções analisadas`, w - margin - 86, 20, 6.8, PDF.muted)
+        color(PDF.line, 'draw')
+        doc.line(margin, 31, w - margin, 31)
+        y = 39
+      }
+      const addFooter = () => {
+        const total = doc.getNumberOfPages()
+        for (let i = 1; i <= total; i++) {
+          doc.setPage(i)
+          const w = currentPageW()
+          const h = currentPageH()
+          color(PDF.line, 'draw')
+          doc.line(margin, h - 14, w - margin, h - 14)
+          text('NR18 Check - Relatório comparativo gerado eletronicamente', margin, h - 8, 7, PDF.muted)
+          text(`Página ${i} de ${total}`, w - margin, h - 8, 7, PDF.muted, 'normal', { align: 'right' })
+        }
+      }
+      const sectionTitle = (title: string) => {
+        ensure(18)
+        text(`${secao}. ${title}`, margin, y, 13, PDF.brandDark, 'bold')
+        color(PDF.brand, 'draw')
+        doc.setLineWidth(0.6)
+        doc.line(margin, y + 2.5, margin + 42, y + 2.5)
+        y += 10
+        secao += 1
+      }
+      const infoBox = (title: string, value: string, x: number, yy: number, w: number, h: number, fill = PDF.bg) => {
+        color(fill, 'fill')
+        color(PDF.line, 'draw')
+        doc.roundedRect(x, yy, w, h, 2.5, 2.5, 'FD')
+        text(title, x + 3, yy + 5, 7, PDF.muted, 'bold')
+        const lines = wrapText(value || 'Não informado', w - 6, 8.2, 'bold').slice(0, Math.max(1, Math.floor((h - 11) / 4.4)))
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8.2)
+        color(PDF.ink, 'text')
+        doc.text(lines, x + 3, yy + 10, { lineHeightFactor: 1.2 })
+      }
+      const metricCard = (label: string, value: string, x: number, yy: number, w: number, h: number, hex: string) => {
+        color('#FFFFFF', 'fill')
+        color(PDF.line, 'draw')
+        doc.roundedRect(x, yy, w, h, 2.5, 2.5, 'FD')
+        text(value, x + w / 2, yy + 9, 14, hex, 'bold', { align: 'center' })
+        text(label, x + w / 2, yy + 15.5, 6.5, PDF.muted, 'normal', { align: 'center' })
+      }
+      const bar = (x: number, yy: number, w: number, h: number, pct: number, hex: string) => {
+        color(PDF.line, 'fill')
+        doc.roundedRect(x, yy, w, h, h / 2, h / 2, 'F')
+        color(hex, 'fill')
+        doc.roundedRect(x, yy, Math.max(0.8, (w * Math.min(100, Math.max(0, pct))) / 100), h, h / 2, h / 2, 'F')
+      }
+      const runTable = (options: any) => {
+        autoTable(doc, {
+          styles: { font: 'helvetica', fontSize: 7.4, cellPadding: 2, overflow: 'linebreak', valign: 'top', textColor: hexToRgb(PDF.ink), lineColor: hexToRgb(PDF.line), lineWidth: 0.08 },
+          headStyles: { fillColor: hexToRgb(PDF.brandDark), textColor: [255, 255, 255], fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: hexToRgb(PDF.bg) },
+          margin: { top: 39, left: margin, right: margin, bottom: 20 },
+          startY: y,
+          willDrawPage: (data: any) => {
+            if (data.pageNumber > 1) addHeader()
+          },
+          ...options,
+        })
+        y = ((doc as any).lastAutoTable?.finalY || y) + 8
+      }
+
+      color('#FFFFFF', 'fill')
+      doc.rect(0, 0, pageW, pageH, 'F')
+      if (logoData) {
+        try { doc.addImage(logoData, 'PNG', margin, 16, 62, 28) } catch {}
+      }
+      color(PDF.line, 'draw')
+      doc.line(margin, 54, pageW - margin, 54)
+      text('RELATÓRIO EVOLUTIVO DE REAVALIAÇÃO', margin, 75, 16, PDF.brandDark, 'bold')
+      text('NR-18 - Evolução histórica, criticidade, melhorias, pioras e plano de ação', margin, 86, 10, PDF.ink, 'bold')
+      text(`Comparação histórica consolidada da obra ${obraNome}`, margin, 94, 8.2, PDF.muted)
+      infoBox('Empresa / obra', obraNome, margin, 110, contentW, 26)
+      infoBox('Período analisado', `${formatDate(primeiraInspecao.data_vistoria)} até ${formatDate(ultimaInspecao.data_vistoria)}`, margin, 142, 88, 24)
+      infoBox('Inspeções analisadas', String(inspecoesHistoricas.length), margin + 94, 142, 32, 24)
+      infoBox('Primeira inspeção', `${primeiraInspecao.numero} | ${primeiraInspecao.classificacao || 'Não informado'}`, margin + 130, 142, 62, 24)
+      infoBox('Última inspeção', `${ultimaInspecao.numero} | ${ultimaInspecao.classificacao || 'Não informado'}`, margin, 172, 88, 24)
+      infoBox('Variação acumulada', `${((ultimaInspecao.indice || 0) - (primeiraInspecao.indice || 0)) > 0 ? '+' : ''}${Math.round((((ultimaInspecao.indice || 0) - (primeiraInspecao.indice || 0)) * 100)) / 100} pontos percentuais`, margin + 94, 172, 56, 24, (ultimaInspecao.indice || 0) >= (primeiraInspecao.indice || 0) ? PDF.greenSoft : PDF.redSoft)
+      infoBox('NCs atuais', String(comparativo.atualNC), margin + 154, 172, 38, 24, PDF.bg)
+      y = 206
+      paragraph('Este documento consolida a comparação histórica de todas as inspeções disponíveis da obra, indicando a evolução do índice de conformidade, o comportamento das não conformidades, a criticidade remanescente, os setores prioritários e o plano de ação 5W2H para tratamento das pendências.', margin, contentW, 8.6, 4.3, PDF.muted)
+
+      doc.addPage()
+      addHeader()
+
+      sectionTitle('Resumo Executivo')
+      const cardW = 33
+      const cardGap = 4
+      const cardsStart = margin + (contentW - (cardW * 5 + cardGap * 4)) / 2
+      ;[
+        ['Melhorias', String(comparativo.melhorias), PDF.green],
+        ['Resolvidas', String(comparativo.resolvidas), PDF.green],
+        ['Pioras', String(comparativo.pioras), PDF.orange],
+        ['Novas NCs', String(comparativo.novas), PDF.red],
+        ['Persistentes', String(comparativo.persistentes), PDF.amber],
+      ].forEach(([label, value, hex], idx) => metricCard(label, value, cardsStart + idx * (cardW + cardGap), y, cardW, 20, hex))
+      y += 30
+      paragraph(leituraTecnica, margin, contentW, 9, 4.6)
+
+      sectionTitle('Linha do Tempo das Inspeções')
+      runTable({
+        head: [['Inspeção', 'Data', 'Classificação', 'Índice', 'NCs']],
+        body: inspecoesHistoricas.map(v => [
+          v.numero,
+          formatDate(v.data_vistoria),
+          v.classificacao || 'Não informado',
+          `${Math.round((v.indice || 0) * 100) / 100}%`,
+          String(v.ncs),
+        ]),
+        columnStyles: {
+          0: { cellWidth: 28, fontStyle: 'bold' },
+          1: { cellWidth: 28 },
+          2: { cellWidth: 44 },
+          3: { cellWidth: 22, halign: 'center' },
+          4: { cellWidth: 18, halign: 'center' },
+        },
+      })
+
+      sectionTitle('Transições Entre Inspeções')
+      if (transicoesHistoricas.length === 0) {
+        paragraph('Não há transições históricas suficientes para cálculo evolutivo.')
+      } else {
+        runTable({
+          head: [['De', 'Para', 'Delta índice', 'Delta NCs', 'Leitura técnica']],
+          body: transicoesHistoricas.map(t => [
+            t.de.numero,
+            t.para.numero,
+            `${t.deltaIndice > 0 ? '+' : ''}${t.deltaIndice} p.p.`,
+            `${t.deltaNCs > 0 ? '+' : ''}${t.deltaNCs}`,
+            t.deltaIndice > 0 && t.deltaNCs < 0
+              ? 'Evolução positiva geral.'
+              : t.deltaIndice >= 0
+                ? 'Estabilidade ou avanço parcial.'
+                : 'Requer atenção corretiva.',
+          ]),
+          columnStyles: {
+            0: { cellWidth: 26, fontStyle: 'bold' },
+            1: { cellWidth: 26, fontStyle: 'bold' },
+            2: { cellWidth: 22, halign: 'center' },
+            3: { cellWidth: 18, halign: 'center' },
+            4: { cellWidth: contentW - 92 },
+          },
+        })
+      }
+
+      sectionTitle('Evolução de Indicadores')
+      text('Índice de conformidade', margin, y, 9, PDF.brandDark, 'bold')
+      text('Não conformidades', margin + 98, y, 9, PDF.brandDark, 'bold')
+      y += 8
+      ;[
+        { label: 'Primeira', value: primeiraInspecao.indice || 0, ncs: inspecoesHistoricas[0]?.ncs || 0 },
+        { label: 'Atual', value: atual.indice_conformidade || 0, ncs: comparativo.atualNC },
+      ].forEach((item, idx) => {
+        const yy = y + idx * 14
+        text(item.label, margin, yy + 3, 8, PDF.ink)
+        bar(margin + 24, yy, 56, 4.5, item.value, item.label === 'Atual' ? PDF.blue : PDF.muted)
+        text(`${item.value}%`, margin + 84, yy + 3.5, 8, item.label === 'Atual' ? PDF.blue : PDF.muted, 'bold')
+        text(item.label, margin + 98, yy + 3, 8, PDF.ink)
+        bar(margin + 124, yy, 36, 4.5, Math.min(100, (item.ncs / Math.max(comparativo.anteriorNC, comparativo.atualNC, 1)) * 100), PDF.red)
+        text(String(item.ncs), margin + 165, yy + 3.5, 8, PDF.red, 'bold')
+      })
+      y += 34
+
+      sectionTitle('Mapa de Melhorias, Pioras e Recorrências')
+      runTable({
+        head: [['Evolução', 'Qtd.', 'Interpretação técnica']],
+        body: [
+          ['Resolvidas', comparativo.resolvidas, 'Não conformidades anteriores que passaram para condição conforme.'],
+          ['Melhorias', comparativo.melhorias, 'Itens com evolução favorável, incluindo resoluções e mudanças para condição menos crítica.'],
+          ['Persistentes', comparativo.persistentes, 'Não conformidades que permaneceram na reavaliação e exigem tratativa gerencial.'],
+          ['Pioras', comparativo.pioras, 'Itens que pioraram em relação à vistoria anterior, incluindo novas não conformidades.'],
+          ['Novas', comparativo.novas, 'Não conformidades identificadas apenas na vistoria atual.'],
+        ],
+        columnStyles: { 0: { cellWidth: 36, fontStyle: 'bold' }, 1: { cellWidth: 18, halign: 'center' }, 2: { cellWidth: contentW - 54 } },
+      })
+
+      sectionTitle('Criticidade Pendente por Nível')
+      comparativo.porNivel.forEach(item => {
+        ensure(10)
+        const total = Math.max(item.pendentes + item.resolvidas, 1)
+        text(item.nivel, margin, y + 3, 8, PDF.ink, 'bold')
+        bar(margin + 28, y, 86, 4.5, (item.pendentes / total) * 100, item.color)
+        text(`${item.pendentes} pendentes | ${item.resolvidas} resolvidas`, margin + 120, y + 3.5, 7.5, PDF.muted)
+        y += 9
+      })
+      y += 4
+
+      sectionTitle('Setores Críticos')
+      if (comparativo.setoresCriticos.length === 0) {
+        paragraph('Não há setores críticos pendentes nesta comparação.')
+      } else {
+        runTable({
+          head: [['Setor', 'Pendências', 'Resolvidas', 'Total comparado', 'Leitura técnica']],
+          body: comparativo.setoresCriticos.map(setor => [
+            setor.setor,
+            String(setor.pendentes),
+            String(setor.resolvidas),
+            String(setor.total),
+            setor.pendentes > 0 ? 'Requer acompanhamento e evidência objetiva de correção.' : 'Setor sem pendências críticas no comparativo.',
+          ]),
+          columnStyles: {
+            0: { cellWidth: 34, fontStyle: 'bold' },
+            1: { cellWidth: 22, halign: 'center' },
+            2: { cellWidth: 22, halign: 'center' },
+            3: { cellWidth: 26, halign: 'center' },
+            4: { cellWidth: contentW - 104 },
+          },
+        })
+      }
+
+      sectionTitle('Itens Alterados ou Críticos')
+      const linhasRelevantes = comparativo.linhas
+        .filter(linha => linha.tipo !== 'mantida')
+        .sort((a, b) => {
+          const order = { piora: 0, nova: 1, persistente: 2, resolvida: 3, melhoria: 4, mantida: 5 }
+          return order[a.tipo] - order[b.tipo]
+        })
+      if (linhasRelevantes.length === 0) {
+        paragraph('Não foram identificadas alterações relevantes entre as duas vistorias.')
+      } else {
+        runTable({
+          head: [['Tipo', 'Ref.', 'Antes', 'Atual', 'Nível', 'Item / observações']],
+          body: linhasRelevantes.map(linha => [
+            linha.tipo,
+            linha.meta.ref || '-',
+            statusLabel(linha.antes?.status),
+            statusLabel(linha.depois?.status),
+            NIVEL_LABEL[linha.meta.nivel] || linha.meta.nivel,
+            `${linha.meta.texto}${linha.antes?.observacao ? '\nAntes: ' + linha.antes.observacao : ''}${linha.depois?.observacao ? '\nAtual: ' + linha.depois.observacao : ''}`,
+          ]),
+          columnStyles: {
+            0: { cellWidth: 22, fontStyle: 'bold' },
+            1: { cellWidth: 20 },
+            2: { cellWidth: 22 },
+            3: { cellWidth: 22 },
+            4: { cellWidth: 20 },
+            5: { cellWidth: contentW - 106 },
+          },
+        })
+      }
+
+      sectionTitle('Parecer Técnico Comparativo')
+      paragraph(`A análise histórica indica variação de ${((ultimaInspecao.indice || 0) - (primeiraInspecao.indice || 0)) > 0 ? '+' : ''}${Math.round(((ultimaInspecao.indice || 0) - (primeiraInspecao.indice || 0)) * 100) / 100} pontos percentuais entre a primeira e a última inspeção do período, com ${comparativo.atualNC} não conformidades na última medição. O foco técnico prioritário é ${focoTecnico.toLowerCase()}, com atenção especial aos itens classificados como persistentes, novos ou com piora em qualquer transição da série histórica. Recomenda-se registrar evidências de correção, validar a eficácia das ações e programar nova verificação para os itens pendentes dentro dos prazos definidos no plano 5W2H.`, margin, contentW, 9, 4.6)
+
+      if (comparativo.planoAcao.length > 0) {
+        doc.addPage('a4', 'landscape')
+        const addAnexoHeader = () => {
+          const w = currentPageW()
+          color('#FFFFFF', 'fill')
+          doc.rect(0, 0, w, 32, 'F')
+          if (logoData) {
+            try { doc.addImage(logoData, 'PNG', margin, 7, 36, 16) } catch {}
+          }
+          text('ANEXO I - Plano de Ação Comparativo 5W2H', w / 2, 15, 12, PDF.brandDark, 'bold', { align: 'center' })
+          text(`${obraNome} | histórico consolidado de ${inspecoesHistoricas.length} inspeções`, w / 2, 22, 7.0, PDF.muted, 'normal', { align: 'center' })
+          color(PDF.line, 'draw')
+          doc.line(12, 29, w - 12, 29)
+        }
+        addAnexoHeader()
+        const landscapeW = currentPageW()
+        const landscapeContentW = landscapeW - 24
+        autoTable(doc, {
+          startY: 36,
+          margin: { top: 36, left: 12, right: 12, bottom: 18 },
+          head: [['Prioridade', 'O que', 'Por quê', 'Onde', 'Quem', 'Quando', 'Como', 'Quanto']],
+          body: comparativo.planoAcao.map(acao => [
+            acao.prioridade,
+            acao.what,
+            acao.why,
+            acao.where,
+            acao.who,
+            acao.when,
+            acao.how,
+            acao.howMuch,
+          ]),
+          styles: { font: 'helvetica', fontSize: 6.6, cellPadding: 1.5, overflow: 'linebreak', valign: 'top', textColor: hexToRgb(PDF.ink), lineColor: hexToRgb(PDF.line), lineWidth: 0.08 },
+          headStyles: { fillColor: hexToRgb(PDF.brandDark), textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+          alternateRowStyles: { fillColor: hexToRgb(PDF.bg) },
+          columnStyles: {
+            0: { cellWidth: landscapeContentW * 0.09, halign: 'center' },
+            1: { cellWidth: landscapeContentW * 0.18 },
+            2: { cellWidth: landscapeContentW * 0.14 },
+            3: { cellWidth: landscapeContentW * 0.12 },
+            4: { cellWidth: landscapeContentW * 0.12 },
+            5: { cellWidth: landscapeContentW * 0.09, halign: 'center' },
+            6: { cellWidth: landscapeContentW * 0.18 },
+            7: { cellWidth: landscapeContentW * 0.08 },
+          },
+          willDrawPage: addAnexoHeader,
+        })
+      }
+
+      addFooter()
+      doc.save(`comparativo-nr18-${sanitizeFileName(atual.numero)}-${sanitizeFileName(obraNome)}.pdf`)
+      toast.success('PDF comparativo gerado!')
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao gerar PDF comparativo')
+    } finally {
+      setGerandoPDF(false)
     }
   }
 
@@ -361,6 +871,10 @@ export default function ComparativoPage() {
             <h1 className="text-base font-black text-[var(--text-primary)]">Relatório comparativo</h1>
             <p className="truncate text-sm text-[var(--text-muted)]">{obraNome} - vistoria {atual.numero}</p>
           </div>
+          <button onClick={exportarPDF} disabled={gerandoPDF || !anterior} className="inline-flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-2.5 text-sm font-black text-[var(--brand)] transition hover:border-[var(--brand)]/50 hover:bg-[var(--brand)]/10 disabled:opacity-60">
+            {gerandoPDF ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            PDF
+          </button>
           <button onClick={criarReavaliacaoCompleta} disabled={criando} className="inline-flex items-center gap-2 rounded-2xl bg-[var(--brand)] px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-[var(--brand-muted)] transition hover:bg-[var(--brand-hover)] disabled:opacity-60">
             {criando ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
             Nova reavaliação
