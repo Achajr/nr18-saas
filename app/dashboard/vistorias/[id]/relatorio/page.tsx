@@ -2,7 +2,19 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import { CHECKLIST, MULTA_INFO, type ChecklistBloco } from '@/lib/checklist-data'
+import {
+  CHECKLIST,
+  EVIDENCIA_LABEL,
+  ETAPA_LABEL,
+  MULTA_INFO,
+  VERIFICACAO_LABEL,
+  getChecklistItemMeta,
+  type ChecklistBloco,
+  type ChecklistItem,
+  type EtapaObra,
+  type EvidenciaTipo,
+  type TipoVerificacao,
+} from '@/lib/checklist-data'
 import { findChecklistItem, loadChecklistModelo } from '@/lib/checklist-runtime'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Download, XCircle, HardHat, CloudSun, Loader2, Sparkles, Building2, ChevronDown, GitCompareArrows, RefreshCw } from 'lucide-react'
@@ -43,7 +55,7 @@ function GaugeChart({ value }: { value: number }) {
       <text x="18" y="118" fill="#888780" fontSize="9" textAnchor="middle">0%</text>
       <text x="182" y="118" fill="#888780" fontSize="9" textAnchor="middle">100%</text>
       <text x="100" y="75" fill={color} fontSize="26" fontWeight="bold" textAnchor="middle">{value}%</text>
-      <text x="100" y="92" fill="#888780" fontSize="8" textAnchor="middle">indice de conformidade</text>
+      <text x="100" y="92" fill="#888780" fontSize="8" textAnchor="middle">índice de conformidade</text>
     </svg>
   )
 }
@@ -61,6 +73,8 @@ interface ItemVistoria {
   id: string; item_id: string; bloco_id: string; status: string; observacao: string | null
   item_texto: string | null; item_ref: string | null; item_nivel: string | null; item_perigo: string | null
   item_nr_texto: string | null; item_multa: string | null
+  item_etapa?: EtapaObra | null; item_tipo_verificacao?: TipoVerificacao | null; item_evidencias?: EvidenciaTipo[] | null
+  item_aplicabilidade?: string | null; item_criterio?: string | null
   fotos?: { url: string; storage_path: string }[]
   empresas?: { empresa_tipo: string; empreiteira_id: string | null }[]
 }
@@ -77,12 +91,13 @@ interface ItemTecnico {
   blocoTitulo: string
   blocoRef: string
   valorMulta: number
+  meta: ReturnType<typeof getChecklistItemMeta>
 }
 
 const NIVEL_CONFIG = {
   grave: { label: 'Grave', bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', dot: '#A32D2D' },
   alto:  { label: 'Alto',  bg: 'bg-[#FAEEDA]', text: 'text-[#633806]', dot: '#854F0B' },
-  medio: { label: 'Medio', bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', dot: 'var(--brand)' },
+  medio: { label: 'Médio', bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', dot: 'var(--brand)' },
   baixo: { label: 'Baixo', bg: 'bg-[#EAF3DE]', text: 'text-[#27500A]', dot: '#3B6D11' },
 }
 const MULTA_CONFIG = {
@@ -127,6 +142,25 @@ function hexToRgb(hex: string): [number, number, number] {
 function dataBR(data?: string | null) {
   if (!data) return 'Não informado'
   return new Date(data + 'T12:00:00').toLocaleDateString('pt-BR')
+}
+
+function textoTecnico(value?: string | null) {
+  return String(value || '')
+    .replace(/\bSatisfatorio\b/g, 'Satisfatório')
+    .replace(/\bInsatisfatorio\b/g, 'Insatisfatório')
+    .replace(/\bCritico\b/g, 'Crítico')
+    .replace(/\bclassificacao\b/g, 'classificação')
+    .replace(/\bMedio\b/g, 'Médio')
+    .replace(/\bAreas de vivencia\b/g, 'Áreas de vivência')
+    .replace(/\bInstalacoes eletricas\b/g, 'Instalações elétricas')
+    .replace(/\bDemolicao\b/g, 'Demolição')
+    .replace(/\bEscavacao\b/g, 'Escavação')
+    .replace(/\bfundacao\b/g, 'fundação')
+    .replace(/\barmacao\b/g, 'armação')
+    .replace(/\bComunicacao Previa\b/g, 'Comunicação Prévia')
+    .replace(/\binicio\b/g, 'início')
+    .replace(/\bseguranca\b/g, 'segurança')
+    .replace(/\bprotecao\b/g, 'proteção')
 }
 
 function sanitizeFileName(value: string) {
@@ -184,19 +218,58 @@ function formatRegistroProfissional(avaliador?: VistoriaCompleta['avaliador'] | 
   return 'Registro não informado'
 }
 
-async function imageToDataUrl(src: string): Promise<string | null> {
+async function imageToPdfDataUrl(src: string): Promise<string | null> {
   try {
     const res = await fetch(src)
     if (!res.ok) return null
     const blob = await res.blob()
-    return await new Promise(resolve => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null)
-      reader.onerror = () => resolve(null)
-      reader.readAsDataURL(blob)
-    })
+    const objectUrl = URL.createObjectURL(blob)
+    try {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      const loaded = await new Promise<HTMLImageElement | null>(resolve => {
+        img.onload = () => resolve(img)
+        img.onerror = () => resolve(null)
+        img.src = objectUrl
+      })
+      if (!loaded) return null
+      const width = Math.max(1, loaded.naturalWidth || loaded.width || 1)
+      const height = Math.max(1, loaded.naturalHeight || loaded.height || 1)
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return null
+      ctx.drawImage(loaded, 0, 0, width, height)
+      return canvas.toDataURL('image/png', 1.0)
+    } finally {
+      URL.revokeObjectURL(objectUrl)
+    }
   } catch {
     return null
+  }
+}
+
+function resolverUrlFoto(storagePath?: string | null) {
+  if (!storagePath) return ''
+  if (/^(https?:|data:|\/)/.test(storagePath)) return storagePath
+  return supabase.storage.from('vistoria-fotos').getPublicUrl(storagePath).data.publicUrl
+}
+
+function resolverMetaItem(item: ChecklistItem, nc: ItemVistoria) {
+  const meta = getChecklistItemMeta(item)
+  const evidenciasSalvas = Array.isArray(nc.item_evidencias) ? nc.item_evidencias : meta.evidencias
+  const etapa = nc.item_etapa || meta.etapa
+  const tipo = nc.item_tipo_verificacao || meta.tipo_verificacao
+  return {
+    etapa,
+    etapa_label: ETAPA_LABEL[etapa] || meta.etapa_label,
+    tipo_verificacao: tipo,
+    tipo_verificacao_label: VERIFICACAO_LABEL[tipo] || meta.tipo_verificacao_label,
+    evidencias: evidenciasSalvas,
+    evidencias_label: evidenciasSalvas.map(e => EVIDENCIA_LABEL[e] || e),
+    aplicabilidade: nc.item_aplicabilidade || meta.aplicabilidade,
+    criterio: nc.item_criterio || meta.criterio,
   }
 }
 
@@ -234,7 +307,7 @@ export default function RelatorioPage() {
         .from('vistorias')
         .select('*, obra:obras(id, name, num_funcionarios, empresa_cliente:empresas_clientes(name, cnpj, cidade, uf)), avaliador:avaliadores(full_name, registro_mte, crea, consultoria:consultorias(name, cnpj))')
         .eq('id', vistoriaId).single()
-      if (!v) { toast.error('Vistoria nao encontrada'); return }
+      if (!v) { toast.error('Vistoria não encontrada'); return }
       setVistoria(v as any)
       setParecer(v.parecer_editado || v.parecer_ia || '')
       let checklistAtivo = CHECKLIST
@@ -269,19 +342,24 @@ export default function RelatorioPage() {
       const { data: itens } = await supabase.from('vistoria_itens').select('*').eq('vistoria_id', vistoriaId)
       if (!itens) { setLoading(false); return }
 
-      // Carrega vinculos de empresas
+      // Carrega vínculos de empresas
       const { data: vinculos } = await supabase.from('vistoria_item_empresas').select('*').eq('vistoria_id', vistoriaId)
 
       // Carrega fotos
       const ncsIds = itens.filter((i: any) => i.status === 'NC').map((i: any) => i.id)
       let fotosMap: Record<string, any[]> = {}
       if (ncsIds.length > 0) {
-        const { data: fotos } = await supabase.from('vistoria_fotos').select('item_id, storage_path').in('item_id', ncsIds)
+        const idsSql = ncsIds.join(',')
+        const { data: fotos } = await supabase
+          .from('vistoria_fotos')
+          .select('item_id, vistoria_item_id, storage_path')
+          .or(`item_id.in.(${idsSql}),vistoria_item_id.in.(${idsSql})`)
         if (fotos) {
           fotos.forEach((f: any) => {
-            const { data: urlData } = supabase.storage.from('vistoria-fotos').getPublicUrl(f.storage_path)
-            if (!fotosMap[f.item_id]) fotosMap[f.item_id] = []
-            fotosMap[f.item_id].push({ url: urlData.publicUrl, storage_path: f.storage_path })
+            const vinculoItemId = f.item_id || f.vistoria_item_id
+            if (!vinculoItemId) return
+            if (!fotosMap[vinculoItemId]) fotosMap[vinculoItemId] = []
+            fotosMap[vinculoItemId].push({ url: resolverUrlFoto(f.storage_path), storage_path: f.storage_path })
           })
         }
       }
@@ -293,11 +371,11 @@ export default function RelatorioPage() {
       }))
       setTodosItens(itensCompletos)
 
-      // Gera parecer IA automaticamente se nao existir
+      // Gera parecer IA automaticamente se não existir
       if (!v.parecer_ia && !v.parecer_editado) {
         await gerarParecerIA(v, itensCompletos, empresasList[0], checklistAtivo)
       }
-    } catch (err) { console.error(err); toast.error('Erro ao carregar relatorio') }
+    } catch (err) { console.error(err); toast.error('Erro ao carregar relatório') }
     finally { setLoading(false) }
   }
 
@@ -399,23 +477,33 @@ export default function RelatorioPage() {
       let secao = 1
       const naoInformado = 'Não informado'
 
-      const logoData = await imageToDataUrl('/branding/login-logo-login.png')
+      const logoData = await imageToPdfDataUrl('/branding/login-logo-login.png')
       const ncs = ncsEmpresa
       const itensTecnicos: ItemTecnico[] = ncs.map(nc => {
         const baseItem = findChecklistItem(checklist, nc.item_id)
         const bloco = checklist.find(b => b.itens.some(i => i.id === nc.item_id))
         const multa = baseItem?.multa || nc.item_multa || 'i2'
+        const itemMetaBase: ChecklistItem = {
+          id: nc.item_id,
+          t: baseItem?.t || nc.item_texto || 'Item avaliado',
+          ref: baseItem?.ref || nc.item_ref || '',
+          nivel: (baseItem?.nivel || nc.item_nivel || 'medio') as ChecklistItem['nivel'],
+          perigo: baseItem?.perigo || nc.item_perigo || '',
+          multa: (baseItem?.multa || nc.item_multa || 'i2') as ChecklistItem['multa'],
+          nr: baseItem?.nr || nc.item_nr_texto || '',
+        }
         return {
           nc,
-          texto: baseItem?.t || nc.item_texto || 'Item avaliado',
-          ref: baseItem?.ref || nc.item_ref || '',
-          nivel: baseItem?.nivel || nc.item_nivel || 'medio',
-          perigo: baseItem?.perigo || nc.item_perigo || '',
+          texto: textoTecnico(itemMetaBase.t),
+          ref: itemMetaBase.ref,
+          nivel: itemMetaBase.nivel,
+          perigo: textoTecnico(itemMetaBase.perigo),
           multa,
-          nr: baseItem?.nr || nc.item_nr_texto || '',
-          blocoTitulo: bloco?.titulo.split('—').slice(1).join('—').trim() || bloco?.titulo || nc.bloco_id,
+          nr: textoTecnico(itemMetaBase.nr),
+          blocoTitulo: textoTecnico(bloco?.titulo.split('—').slice(1).join('—').trim() || bloco?.titulo || nc.bloco_id),
           blocoRef: bloco?.ref || nc.bloco_id,
           valorMulta: calcularMulta(multa, empresaSelecionada.num_funcionarios || 0),
+          meta: resolverMetaItem(itemMetaBase, nc),
         }
       })
       const multaTotal = itensTecnicos.reduce((sum, item) => sum + item.valorMulta, 0)
@@ -620,7 +708,7 @@ export default function RelatorioPage() {
       infoBox('Obra / frente de serviço', vistoria.obra?.name || naoInformado, margin, 144, contentW, 24)
       infoBox('Data da vistoria', dataBR(vistoria.data_vistoria), margin, 176, 54, 22)
       infoBox('Número', vistoria.numero, margin + 60, 176, 38, 22)
-      infoBox('Classificação', vistoria.classificacao || naoInformado, margin + 104, 176, 78, 22, indice >= 70 ? PDF.greenSoft : PDF.redSoft)
+      infoBox('Classificação', textoTecnico(vistoria.classificacao) || naoInformado, margin + 104, 176, 78, 22, indice >= 70 ? PDF.greenSoft : PDF.redSoft)
       y = 214
       text('Responsável técnico', margin, y, 10, PDF.brandDark, 'bold')
       y += 7
@@ -689,7 +777,7 @@ export default function RelatorioPage() {
       sectionTitle('Conformidade por Seção da NR-18')
       blocoStats.forEach((s: any) => {
         ensure(12)
-        const titulo = s.bloco.titulo.split('—').slice(1).join('—').trim() || s.bloco.titulo
+        const titulo = textoTecnico(s.bloco.titulo.split('—').slice(1).join('—').trim() || s.bloco.titulo)
         text(`${s.bloco.ref} - ${titulo}`, margin, y, 7.5, PDF.ink)
         text(`${s.indice}% | ${s.conformes} C | ${s.ncs} NC | ${s.na} N/A`, pageW - margin - 48, y, 7.2, corPorIndice(s.indice), 'bold')
         y += 3
@@ -702,20 +790,20 @@ export default function RelatorioPage() {
         paragraph('Não foram registradas não conformidades atribuídas a esta empresa no escopo selecionado.')
       } else {
         runTable({
-          head: [['#', 'Ref.', 'Nível', 'Perigo', 'Requisito / observação técnica']],
+          head: [['#', 'Ref.', 'Nível', 'Verificação', 'Requisito / observação técnica']],
           body: itensTecnicos.map((item, idx) => [
             String(idx + 1),
             item.ref,
             prioridadePorNivel(item.nivel),
-            item.perigo || naoInformado,
-            `${item.texto}${item.nc.observacao ? '\nObservação: ' + item.nc.observacao : ''}`,
+            item.meta.tipo_verificacao_label,
+            `${item.texto}${item.perigo ? '\nPerigo: ' + item.perigo : ''}\nEtapa: ${item.meta.etapa_label}\nEvidências: ${item.meta.evidencias_label.join(', ')}${item.nc.observacao ? '\nObservação: ' + item.nc.observacao : ''}`,
           ]),
           columnStyles: {
             0: { cellWidth: 9, halign: 'center' },
             1: { cellWidth: 22 },
             2: { cellWidth: 20 },
-            3: { cellWidth: 26 },
-            4: { cellWidth: contentW - 77 },
+            3: { cellWidth: 28 },
+            4: { cellWidth: contentW - 79 },
           },
         })
       }
@@ -734,6 +822,9 @@ export default function RelatorioPage() {
           const detailX = margin + 2
           const detailW = contentW - 4
           paragraph(`Requisito avaliado: ${item.texto}`, detailX, detailW, 8.2, 4)
+          paragraph(`Matriz técnica: ${item.meta.etapa_label}; verificação ${item.meta.tipo_verificacao_label.toLowerCase()}; evidências esperadas: ${item.meta.evidencias_label.join(', ')}.`, detailX, detailW, 7.8, 3.8, PDF.ink)
+          paragraph(`Aplicabilidade: ${item.meta.aplicabilidade}`, detailX, detailW, 7.6, 3.7, PDF.muted)
+          paragraph(`Critério técnico: ${item.meta.criterio}`, detailX, detailW, 7.6, 3.7, PDF.muted)
           if (item.nr) paragraph(`Texto legal de referência: ${item.nr}`, detailX, detailW, 7.5, 3.8, PDF.muted)
           if (item.nc.observacao) paragraph(`Evidência/observação registrada: ${item.nc.observacao}`, detailX, detailW, 8.2, 4, PDF.ink)
           const fotos = item.nc.fotos || []
@@ -741,7 +832,7 @@ export default function RelatorioPage() {
             ensure(34)
             text('Evidências fotográficas:', margin, y, 8, PDF.brandDark, 'bold')
             y += 4
-            const imgs = await Promise.all(fotos.slice(0, 3).map((f: { url: string }) => imageToDataUrl(f.url)))
+            const imgs = await Promise.all(fotos.slice(0, 3).map((f: { url: string }) => imageToPdfDataUrl(f.url)))
             imgs.forEach((img, imgIdx) => {
               if (!img) return
               try {
@@ -1011,7 +1102,7 @@ export default function RelatorioPage() {
             <div className="flex flex-col sm:flex-row items-center gap-6">
               <div className="flex-shrink-0 w-56"><GaugeChart value={indice} /></div>
               <div className="flex-1 w-full">
-                <div className={'text-2xl font-bold mb-0.5 ' + classColor}>{vistoria.classificacao}</div>
+                <div className={'text-2xl font-bold mb-0.5 ' + classColor}>{textoTecnico(vistoria.classificacao)}</div>
                 <div className="text-xs text-[var(--text-muted)] mb-4">Classificação da vistoria NR-18</div>
                 <div className="grid grid-cols-4 gap-2 text-center mb-4">
                   {[
@@ -1027,13 +1118,13 @@ export default function RelatorioPage() {
                   ))}
                 </div>
                 <div className="bg-[var(--bg-primary)]/60 rounded-xl p-3">
-                  <div className="text-xs text-[var(--text-muted)] mb-2">Escala de classificacao NR-18</div>
+                  <div className="text-xs text-[var(--text-muted)] mb-2">Escala de classificação NR-18</div>
                   <div className="grid grid-cols-4 gap-1 text-xs text-center">
                     {[
-                      { label: 'Satisfatorio', range: '>=90%', bg: 'bg-[#EAF3DE]', text: 'text-[#27500A]', match: indice >= 90 },
+                      { label: 'Satisfatório', range: '>=90%', bg: 'bg-[#EAF3DE]', text: 'text-[#27500A]', match: indice >= 90 },
                       { label: 'Parc. satisf.', range: '70-89%', bg: 'bg-[#FAEEDA]', text: 'text-[#633806]', match: indice >= 70 && indice < 90 },
-                      { label: 'Insatisfatorio', range: '50-69%', bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', match: indice >= 50 && indice < 70 },
-                      { label: 'Critico', range: '<50%', bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', match: indice < 50 },
+                      { label: 'Insatisfatório', range: '50-69%', bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', match: indice >= 50 && indice < 70 },
+                      { label: 'Crítico', range: '<50%', bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', match: indice < 50 },
                     ].map((s, i) => (
                       <div key={i} className={'rounded-lg py-1.5 px-1 ' + s.bg + ' ' + s.text + (s.match ? ' ring-2 ring-current' : '')}>
                         <div className="font-bold text-xs">{s.label}</div>
@@ -1072,7 +1163,7 @@ export default function RelatorioPage() {
                 {[
                   { label: 'Grave', count: ncsGrave, bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', desc: 'Ação imediata' },
                   { label: 'Alto',  count: ncsAlto,  bg: 'bg-[#FAEEDA]', text: 'text-[#633806]', desc: 'Curto prazo' },
-                  { label: 'Medio', count: ncsMedio, bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', desc: 'Programado' },
+                  { label: 'Médio', count: ncsMedio, bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', desc: 'Programado' },
                 ].map((n, i) => (
                   <div key={i} className={'rounded-xl p-3 text-center ' + n.bg}>
                     <div className={'text-3xl font-bold ' + n.text}>{n.count}</div>
@@ -1096,7 +1187,7 @@ export default function RelatorioPage() {
             <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Conformidade por Seção da NR-18</h3>
             {blocoStats.map((s: any) => {
               const color = s.indice >= 90 ? '#3B6D11' : s.indice >= 70 ? '#854F0B' : s.indice >= 50 ? '#A32D2D' : '#791F1F'
-              const titulo = s.bloco.titulo.split('—').slice(1).join('—').trim() || s.bloco.titulo
+              const titulo = textoTecnico(s.bloco.titulo.split('—').slice(1).join('—').trim() || s.bloco.titulo)
               return (
                 <div key={s.bloco.id} className="mb-3">
                   <div className="flex items-center justify-between mb-1">
@@ -1131,7 +1222,7 @@ export default function RelatorioPage() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-sm font-semibold text-[var(--text-primary)]">Parecer Técnico Conclusivo</h3>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">Editavel — clique no texto para modificar</p>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">Editável — clique no texto para modificar</p>
               </div>
               <div className="flex items-center gap-2">
                 {parecerEditado && (
@@ -1181,7 +1272,8 @@ export default function RelatorioPage() {
                     perigo: baseItem?.perigo || nc.item_perigo || '',
                     multa: baseItem?.multa || nc.item_multa || 'i2',
                     nr: baseItem?.nr || nc.item_nr_texto || '',
-                  }
+                  } as ChecklistItem
+                  const meta = resolverMetaItem(item, nc)
                   const nivelCfg = NIVEL_CONFIG[item.nivel as keyof typeof NIVEL_CONFIG] || NIVEL_CONFIG.medio
                   const multaCfg = MULTA_CONFIG[item.multa as keyof typeof MULTA_CONFIG] || MULTA_CONFIG.i1
                   return (
@@ -1196,13 +1288,20 @@ export default function RelatorioPage() {
                             <span className={'text-xs px-2 py-0.5 rounded-full font-medium ' + multaCfg.bg + ' ' + multaCfg.text}>{MULTA_INFO[item.multa as keyof typeof MULTA_INFO]?.label} — {MULTA_INFO[item.multa as keyof typeof MULTA_INFO]?.faixa}</span>
                             <span className="text-xs font-mono text-[var(--brand)]">{item.ref}</span>
                           </div>
-                          <p className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.t}</p>
+                          <p className="text-sm font-medium text-[var(--text-primary)] mb-2">{textoTecnico(item.t)}</p>
                           <div className="bg-[var(--bg-primary)] rounded-xl p-3 mb-2 border-l-2 border-[var(--brand)]/40">
                             <div className="text-xs text-[var(--brand)] mb-1 font-medium">Texto legal — {item.ref}</div>
-                            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{item.nr}</p>
+                            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{textoTecnico(item.nr)}</p>
                           </div>
                           <div className={'rounded-xl p-2 mb-2 ' + multaCfg.bg}>
                             <p className={'text-xs ' + multaCfg.text}><strong>Penalidade NR-28:</strong> {MULTA_INFO[item.multa as keyof typeof MULTA_INFO]?.desc}</p>
+                          </div>
+                          <div className="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] p-3 text-xs text-[var(--text-secondary)] sm:grid-cols-2 mb-2">
+                            <div><span className="font-bold text-[var(--text-primary)]">Etapa:</span> {meta.etapa_label}</div>
+                            <div><span className="font-bold text-[var(--text-primary)]">Verificação:</span> {meta.tipo_verificacao_label}</div>
+                            <div className="sm:col-span-2"><span className="font-bold text-[var(--text-primary)]">Evidências:</span> {meta.evidencias_label.join(', ')}</div>
+                            <div className="sm:col-span-2"><span className="font-bold text-[var(--text-primary)]">Aplicabilidade:</span> {meta.aplicabilidade}</div>
+                            <div className="sm:col-span-2"><span className="font-bold text-[var(--text-primary)]">Critério:</span> {meta.criterio}</div>
                           </div>
                           {nc.observacao && (
                             <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-3 mb-2">

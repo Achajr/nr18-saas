@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <rect width="640" height="400" fill="#f4f7fb"/>
+  <rect x="36" y="36" width="568" height="328" rx="18" fill="#ffffff" stroke="#185FA5" stroke-width="4"/>
+  <rect x="64" y="72" width="512" height="190" rx="12" fill="#dfeaf5"/>
+  <path d="M96 238l116-82 72 54 78-92 182 120H96z" fill="#7aa6cf"/>
+  <circle cx="488" cy="118" r="34" fill="#f6b44b"/>
+  <text x="320" y="310" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#123b5f">Evidencia fotografica QA</text>
+  <text x="320" y="340" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#4b6174">Teste automatizado NR-18</text>
+</svg>

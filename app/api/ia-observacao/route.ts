@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ error: 'ANTHROPIC_API_KEY não configurada no ambiente de produção.' }, { status: 500 })
+    }
+
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     const { item_codigo, item_descricao, secao_nome, empresa, obra, texto_avaliador, contexto } = await req.json()
 
     // Modo: reescrever observacao do avaliador (checklist)

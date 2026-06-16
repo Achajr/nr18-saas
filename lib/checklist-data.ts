@@ -5,6 +5,27 @@
 
 export type NivelRisco = 'grave' | 'alto' | 'medio' | 'baixo'
 export type GrauMulta = 'i1' | 'i2' | 'i3' | 'i4'
+export type EtapaObra =
+  | 'documentacao'
+  | 'implantacao'
+  | 'fundacao'
+  | 'estrutura'
+  | 'acabamento'
+  | 'cobertura'
+  | 'movimentacao_cargas'
+  | 'trabalho_altura'
+  | 'todas'
+export type TipoVerificacao = 'documental' | 'campo' | 'documental_campo'
+export type EvidenciaTipo =
+  | 'foto'
+  | 'documento'
+  | 'projeto'
+  | 'art'
+  | 'laudo'
+  | 'treinamento'
+  | 'inspecao'
+  | 'registro'
+  | 'entrevista'
 
 export interface ChecklistItem {
   id: string
@@ -14,6 +35,11 @@ export interface ChecklistItem {
   perigo: string
   multa: GrauMulta
   nr: string
+  etapa?: EtapaObra
+  tipo_verificacao?: TipoVerificacao
+  evidencias?: EvidenciaTipo[]
+  aplicabilidade?: string
+  criterio?: string
 }
 
 export interface ChecklistBloco {
@@ -24,10 +50,103 @@ export interface ChecklistBloco {
 }
 
 export const MULTA_INFO = {
-  i1: { label: 'I1', faixa: 'R$ 575 a R$ 2.781',  desc: 'Infracao grau I1 - menor gravidade' },
-  i2: { label: 'I2', faixa: 'R$ 2.653 a R$ 4.387', desc: 'Infracao grau I2 - gravidade media' },
-  i3: { label: 'I3', faixa: 'R$ 2.655 a R$ 4.387', desc: 'Infracao grau I3 - alta gravidade' },
-  i4: { label: 'I4', faixa: 'R$ 4.387 a R$ 6.707', desc: 'Infracao grau I4 - gravidade maxima. Dobra em reincidencia (CLT art. 201).' },
+  i1: { label: 'I1', faixa: 'R$ 575 a R$ 2.781',  desc: 'Infração grau I1 - menor gravidade' },
+  i2: { label: 'I2', faixa: 'R$ 2.653 a R$ 4.387', desc: 'Infração grau I2 - gravidade média' },
+  i3: { label: 'I3', faixa: 'R$ 2.655 a R$ 4.387', desc: 'Infração grau I3 - alta gravidade' },
+  i4: { label: 'I4', faixa: 'R$ 4.387 a R$ 6.707', desc: 'Infração grau I4 - gravidade máxima. Dobra em reincidência (CLT art. 201).' },
+}
+
+export const ETAPA_LABEL: Record<EtapaObra, string> = {
+  documentacao: 'Documentação e gestão',
+  implantacao: 'Implantação do canteiro',
+  fundacao: 'Fundação, escavação e demolição',
+  estrutura: 'Estrutura e concretagem',
+  acabamento: 'Acabamento e serviços gerais',
+  cobertura: 'Cobertura e impermeabilização',
+  movimentacao_cargas: 'Movimentação de cargas',
+  trabalho_altura: 'Trabalho em altura',
+  todas: 'Todas as etapas',
+}
+
+export const VERIFICACAO_LABEL: Record<TipoVerificacao, string> = {
+  documental: 'Documental',
+  campo: 'Campo',
+  documental_campo: 'Documental e campo',
+}
+
+export const EVIDENCIA_LABEL: Record<EvidenciaTipo, string> = {
+  foto: 'Registro fotográfico',
+  documento: 'Documento',
+  projeto: 'Projeto',
+  art: 'ART/RRT',
+  laudo: 'Laudo',
+  treinamento: 'Certificado/lista de presença',
+  inspecao: 'Checklist/inspeção',
+  registro: 'Registro formal',
+  entrevista: 'Entrevista/verificação com equipe',
+}
+
+function inferirEtapa(item: ChecklistItem): EtapaObra {
+  if (item.ref.startsWith('18.3') || item.ref.startsWith('18.4') || item.ref.includes('18.14') || item.ref.includes('Anexo I')) return 'documentacao'
+  if (item.ref.startsWith('18.5') || item.ref.startsWith('18.13') || item.ref.startsWith('18.16')) return 'implantacao'
+  if (item.ref.startsWith('18.7.1') || item.ref.startsWith('18.7.2')) return 'fundacao'
+  if (item.ref.startsWith('18.7.3') || item.ref.startsWith('18.7.4')) return 'estrutura'
+  if (item.ref.startsWith('18.7.7') || item.ref.startsWith('18.7.8')) return 'cobertura'
+  if (item.ref.startsWith('18.10') || item.ref.startsWith('18.11')) return 'movimentacao_cargas'
+  if (item.ref.startsWith('18.8') || item.ref.startsWith('18.9') || item.ref.startsWith('18.12')) return 'trabalho_altura'
+  return 'todas'
+}
+
+function inferirTipoVerificacao(item: ChecklistItem): TipoVerificacao {
+  const txt = `${item.t} ${item.nr}`.toLowerCase()
+  const documental = /(pgr|projeto|art|laudo|comunicacao|comunicação|inventario|inventário|capacitacao|capacitação|treinamento|plano|fispq|registro)/.test(txt)
+  const campo = /(instalad|sinaliz|protegid|isolad|guarda-corpo|escada|andaime|equipamento|maquina|máquina|canteiro|area|área|saida|saída)/.test(txt)
+  if (documental && campo) return 'documental_campo'
+  if (documental) return 'documental'
+  return 'campo'
+}
+
+function inferirEvidencias(item: ChecklistItem): EvidenciaTipo[] {
+  const txt = `${item.t} ${item.nr}`.toLowerCase()
+  const evidencias = new Set<EvidenciaTipo>()
+  evidencias.add('foto')
+  if (/(pgr|inventario|inventário|comunicacao|comunicação|fispq|registro)/.test(txt)) evidencias.add('documento')
+  if (/(projeto|plano de carga|spi?q|sistema de protecao|sistema de proteção)/.test(txt)) evidencias.add('projeto')
+  if (/(profissional legalmente habilitado|habilitado|art|rrt)/.test(txt)) evidencias.add('art')
+  if (/(laudo|medicoes|medições|spda|aterramento)/.test(txt)) evidencias.add('laudo')
+  if (/(capacitacao|capacitação|treinamento|operador)/.test(txt)) evidencias.add('treinamento')
+  if (/(inspecao|inspeção|verificacao|verificação|diaria|diária)/.test(txt)) evidencias.add('inspecao')
+  if (/(acidente fatal|comunicar|liberacao|liberação)/.test(txt)) evidencias.add('registro')
+  if (evidencias.size === 1 && item.nivel !== 'baixo') evidencias.add('entrevista')
+  return Array.from(evidencias)
+}
+
+function inferirAplicabilidade(item: ChecklistItem, etapa: EtapaObra) {
+  if (item.ref.includes('18.10.1.15') || item.perigo === 'Queda de carga') return 'Aplicável quando houver equipamentos de guindar, movimentação de cargas suspensas ou operação equivalente.'
+  if (item.ref.startsWith('18.11')) return 'Aplicável quando houver elevadores, transporte vertical de materiais ou pessoas.'
+  if (item.ref.startsWith('18.12')) return 'Aplicável quando houver andaimes, plataformas, cadeira suspensa, PEMT ou necessidade de acesso em altura.'
+  if (item.ref.startsWith('18.7.2')) return 'Aplicável em serviços de escavação, fundação, contenção, taludes ou desmonte de rochas.'
+  if (item.ref.startsWith('18.7.6')) return 'Aplicável em atividades com solda, corte, chama aberta, aquecimento ou geração de fagulhas.'
+  if (item.ref.startsWith('18.7.7') || item.ref.startsWith('18.7.8')) return 'Aplicável em serviços de impermeabilização, cobertura ou trabalho em telhados.'
+  if (item.ref.startsWith('18.14') || item.ref.includes('Anexo I')) return 'Aplicável aos trabalhadores envolvidos na atividade correspondente, conforme função e equipamento utilizado.'
+  if (etapa === 'documentacao') return 'Aplicável à gestão documental e técnica da obra, independentemente da fase física do canteiro.'
+  return 'Aplicável quando a condição, frente de serviço, equipamento ou risco correspondente estiver presente na obra.'
+}
+
+export function getChecklistItemMeta(item: ChecklistItem) {
+  const etapa = item.etapa || inferirEtapa(item)
+  const tipo_verificacao = item.tipo_verificacao || inferirTipoVerificacao(item)
+  const evidencias = item.evidencias || inferirEvidencias(item)
+  return {
+    etapa,
+    etapa_label: ETAPA_LABEL[etapa],
+    tipo_verificacao,
+    tipo_verificacao_label: VERIFICACAO_LABEL[tipo_verificacao],
+    evidencias,
+    evidencias_label: evidencias.map(e => EVIDENCIA_LABEL[e]),
+    aplicabilidade: item.aplicabilidade || inferirAplicabilidade(item, etapa),
+    criterio: item.criterio || 'Considerar conforme quando houver evidência objetiva de atendimento integral ao requisito normativo; registrar não conformidade quando houver ausência, falha, vencimento, incompatibilidade ou impossibilidade de comprovação.',
+  }
 }
 
 export const CHECKLIST: ChecklistBloco[] = [

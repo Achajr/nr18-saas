@@ -171,7 +171,7 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
           <BrandLogo
             size="sm"
             markOnly={collapsed}
-            subtitle={consultoriaName || 'Vistorias e conformidade'}
+            subtitle={consultoriaName || ''}
           />
         </div>
 

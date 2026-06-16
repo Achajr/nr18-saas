@@ -182,7 +182,7 @@ export default function DashboardPage() {
       <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg-surface)]/90 px-4 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <BrandLogo size="sm" subtitle={avaliador?.consultoria?.name || 'Vistorias e conformidade'} />
+            <BrandLogo size="sm" subtitle={avaliador?.consultoria?.name || ''} />
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-primary)] px-4 py-2 text-right sm:block">
