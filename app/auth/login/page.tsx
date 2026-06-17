@@ -88,19 +88,19 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] overflow-hidden">
       <div className="grid min-h-screen lg:grid-cols-[1.08fr_0.92fr]">
-        <section className="relative hidden lg:flex flex-col justify-between px-12 py-10 xl:px-16">
+        <section className="relative hidden lg:flex flex-col justify-center gap-9 px-10 py-9 xl:px-14">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(29,78,216,0.20),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(15,23,42,0.88)_52%,rgba(30,64,175,0.82))]" />
           <div className="absolute inset-x-10 bottom-0 h-56 rounded-t-[48px] bg-white/8 blur-3xl" />
 
-          <div className="relative flex justify-center">
-            <div className="rounded-[24px] border border-white/18 bg-white px-3 py-2 shadow-[0_22px_58px_rgba(0,0,0,0.30)]">
+          <div className="relative flex justify-start">
+            <div className="rounded-[20px] border border-white/18 bg-white px-4 py-3 shadow-[0_18px_42px_rgba(0,0,0,0.26)]">
               <Image
                 src="/branding/login-logo-login.png"
                 alt="NR18 Check"
                 width={1080}
                 height={500}
                 priority
-                className="h-auto w-full max-w-[620px] object-contain"
+                className="h-auto w-full max-w-[390px] object-contain"
               />
             </div>
           </div>
@@ -110,50 +110,67 @@ export default function LoginPage() {
               <Sparkles size={16} className="text-cyan-200" />
               Plataforma operacional para consultorias
             </div>
-            <h1 className="mt-8 text-5xl font-black leading-[1.02] text-white xl:text-6xl">
-              Vistorias, não conformidades e relatórios em um fluxo mais claro.
+            <h1 className="mt-6 max-w-[620px] text-4xl font-black leading-[1.08] text-white xl:text-5xl">
+              Gestão técnica de vistorias NR-18 com relatórios prontos para entregar.
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
-              Uma experiência pensada para equipes que precisam registrar campo, acompanhar risco e entregar relatórios técnicos com mais velocidade.
+            <p className="mt-5 max-w-xl text-base leading-7 text-slate-300 xl:text-lg">
+              Registre campo, acompanhe riscos, anexe evidências e gere pareceres comerciais com padrão profissional.
             </p>
 
-            <div className="mt-10 grid grid-cols-3 gap-3">
+            <div className="mt-7 grid grid-cols-3 gap-3">
               {[
                 { label: 'Conformidade', value: 'NR 18', icon: ClipboardCheck },
                 { label: 'Empresas', value: 'Multi-cliente', icon: Building2 },
                 { label: 'Relatórios', value: 'Com IA', icon: BarChart3 },
               ].map(item => (
-                <div key={item.label} className="rounded-2xl border border-white/12 bg-white/10 p-4 backdrop-blur-xl">
-                  <item.icon size={20} className="text-cyan-200" />
-                  <div className="mt-4 text-2xl font-black text-white">{item.value}</div>
-                  <div className="mt-1 text-sm text-slate-300">{item.label}</div>
+                <div key={item.label} className="rounded-2xl border border-white/12 bg-white/[0.08] p-4 backdrop-blur-xl">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-300/12 text-cyan-200">
+                    <item.icon size={18} />
+                  </div>
+                  <div className="mt-4 text-xl font-black text-white">{item.value}</div>
+                  <div className="mt-1 text-xs font-medium text-slate-300">{item.label}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="relative rounded-[28px] border border-white/14 bg-white/10 p-5 text-white backdrop-blur-xl shadow-2xl">
+          <div className="relative rounded-[24px] border border-white/14 bg-white/[0.08] p-5 text-white backdrop-blur-xl shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
-                <div className="text-sm text-slate-300">Prévia do fluxo</div>
-                <div className="text-lg font-bold">Checklist de obra em andamento</div>
+                <div className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200/80">Painel operacional</div>
+                <div className="mt-1 text-lg font-black">Obra em acompanhamento</div>
               </div>
-              <div className="rounded-full bg-emerald-400/16 px-3 py-1 text-sm font-bold text-emerald-200">82%</div>
+              <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/12 px-4 py-2 text-right">
+                <div className="text-xl font-black text-emerald-200">82%</div>
+                <div className="text-[11px] font-semibold text-emerald-100/70">aderência</div>
+              </div>
             </div>
-            <div className="mt-4 grid grid-cols-[1fr_120px] gap-4">
-              <div className="space-y-3">
-                {['Proteção coletiva validada', 'Frentes de serviço mapeadas', 'Evidências fotográficas anexadas'].map((text, index) => (
-                  <div key={text} className="flex items-center gap-3 rounded-2xl bg-white/8 px-4 py-3">
-                    <CheckCircle2 size={18} className={index === 2 ? 'text-amber-200' : 'text-emerald-200'} />
+            <div className="mt-5 grid grid-cols-[1fr_136px] gap-4">
+              <div className="rounded-2xl border border-white/10 bg-slate-950/22 p-4">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+                  <span>Checklist NR-18</span>
+                  <span>104 itens</span>
+                </div>
+                <div className="mt-3 h-2 rounded-full bg-white/10">
+                  <div className="h-full w-[82%] rounded-full bg-gradient-to-r from-emerald-300 to-cyan-300" />
+                </div>
+                <div className="mt-4 space-y-2.5">
+                {['Não conformidades priorizadas', 'Evidências fotográficas anexadas', 'Plano de ação preparado'].map((text, index) => (
+                  <div key={text} className="flex items-center gap-3 text-sm text-slate-100">
+                    <CheckCircle2 size={15} className={index === 0 ? 'text-amber-200' : 'text-emerald-200'} />
                     <span className="text-sm text-slate-100">{text}</span>
                   </div>
                 ))}
+                </div>
               </div>
-              <div className="rounded-2xl bg-slate-950/35 p-4">
-                <div className="text-xs text-slate-400">Pendências</div>
-                <div className="mt-2 text-4xl font-black">6</div>
-                <div className="mt-6 h-2 rounded-full bg-white/10">
-                  <div className="h-full w-2/3 rounded-full bg-cyan-300" />
+              <div className="grid gap-3">
+                <div className="rounded-2xl bg-slate-950/32 p-4">
+                  <div className="text-xs text-slate-400">Pendências</div>
+                  <div className="mt-1 text-3xl font-black">6</div>
+                </div>
+                <div className="rounded-2xl bg-slate-950/32 p-4">
+                  <div className="text-xs text-slate-400">Relatórios</div>
+                  <div className="mt-1 text-3xl font-black">PDF</div>
                 </div>
               </div>
             </div>
