@@ -123,13 +123,13 @@ export default function LoginPage() {
                 { label: 'Operação por cliente', value: 'Multiempresa', desc: 'Obras, setores e responsáveis em um só fluxo.', icon: Building2 },
                 { label: 'Entrega profissional', value: 'Relatórios PDF', desc: 'Parecer técnico, plano de ação e comparativos.', icon: BarChart3 },
               ].map(item => (
-                <div key={item.label} className="group rounded-[22px] border border-white/14 bg-white/[0.075] p-5 text-left shadow-[0_18px_44px_rgba(8,18,42,0.18)] backdrop-blur-xl transition hover:border-cyan-200/35 hover:bg-white/[0.105]">
+                <div key={item.label} className="group flex min-h-[196px] flex-col items-center justify-center rounded-[22px] border border-white/14 bg-white/[0.075] p-5 text-center shadow-[0_18px_44px_rgba(8,18,42,0.18)] backdrop-blur-xl transition hover:border-cyan-200/35 hover:bg-white/[0.105]">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-200/20 bg-cyan-300/12 text-cyan-200 shadow-inner shadow-white/10">
                     <item.icon size={20} />
                   </div>
                   <div className="mt-5 text-lg font-black text-white">{item.value}</div>
                   <div className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-cyan-100/70">{item.label}</div>
-                  <p className="mt-3 text-sm leading-5 text-slate-300">{item.desc}</p>
+                  <p className="mt-3 max-w-[170px] text-sm leading-5 text-slate-300">{item.desc}</p>
                 </div>
               ))}
             </div>
