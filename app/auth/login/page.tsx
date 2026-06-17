@@ -6,7 +6,6 @@ import {
   ArrowRight,
   BarChart3,
   Building2,
-  CheckCircle2,
   ClipboardCheck,
   Eye,
   EyeOff,
@@ -88,11 +87,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] overflow-hidden">
       <div className="grid min-h-screen lg:grid-cols-[1.08fr_0.92fr]">
-        <section className="relative hidden lg:flex flex-col justify-center gap-9 px-10 py-9 xl:px-14">
+        <section className="relative hidden lg:flex flex-col items-center justify-center px-10 py-9 text-center xl:px-14">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(29,78,216,0.20),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(15,23,42,0.88)_52%,rgba(30,64,175,0.82))]" />
           <div className="absolute inset-x-10 bottom-0 h-56 rounded-t-[48px] bg-white/8 blur-3xl" />
 
-          <div className="relative flex justify-start">
+          <div className="relative flex justify-center">
             <div className="rounded-[20px] border border-white/18 bg-white px-4 py-3 shadow-[0_18px_42px_rgba(0,0,0,0.26)]">
               <Image
                 src="/branding/login-logo-login.png"
@@ -105,7 +104,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="relative max-w-2xl">
+          <div className="relative mt-8 flex max-w-2xl flex-col items-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-100 backdrop-blur">
               <Sparkles size={16} className="text-cyan-200" />
               Plataforma operacional para consultorias
@@ -117,7 +116,7 @@ export default function LoginPage() {
               Registre campo, acompanhe riscos, anexe evidências e gere pareceres comerciais com padrão profissional.
             </p>
 
-            <div className="mt-7 grid grid-cols-3 gap-3">
+            <div className="mt-8 grid w-full max-w-xl grid-cols-3 gap-3">
               {[
                 { label: 'Conformidade', value: 'NR 18', icon: ClipboardCheck },
                 { label: 'Empresas', value: 'Multi-cliente', icon: Building2 },
@@ -131,48 +130,6 @@ export default function LoginPage() {
                   <div className="mt-1 text-xs font-medium text-slate-300">{item.label}</div>
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div className="relative rounded-[24px] border border-white/14 bg-white/[0.08] p-5 text-white backdrop-blur-xl shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div>
-                <div className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200/80">Painel operacional</div>
-                <div className="mt-1 text-lg font-black">Obra em acompanhamento</div>
-              </div>
-              <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/12 px-4 py-2 text-right">
-                <div className="text-xl font-black text-emerald-200">82%</div>
-                <div className="text-[11px] font-semibold text-emerald-100/70">aderência</div>
-              </div>
-            </div>
-            <div className="mt-5 grid grid-cols-[1fr_136px] gap-4">
-              <div className="rounded-2xl border border-white/10 bg-slate-950/22 p-4">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
-                  <span>Checklist NR-18</span>
-                  <span>104 itens</span>
-                </div>
-                <div className="mt-3 h-2 rounded-full bg-white/10">
-                  <div className="h-full w-[82%] rounded-full bg-gradient-to-r from-emerald-300 to-cyan-300" />
-                </div>
-                <div className="mt-4 space-y-2.5">
-                {['Não conformidades priorizadas', 'Evidências fotográficas anexadas', 'Plano de ação preparado'].map((text, index) => (
-                  <div key={text} className="flex items-center gap-3 text-sm text-slate-100">
-                    <CheckCircle2 size={15} className={index === 0 ? 'text-amber-200' : 'text-emerald-200'} />
-                    <span className="text-sm text-slate-100">{text}</span>
-                  </div>
-                ))}
-                </div>
-              </div>
-              <div className="grid gap-3">
-                <div className="rounded-2xl bg-slate-950/32 p-4">
-                  <div className="text-xs text-slate-400">Pendências</div>
-                  <div className="mt-1 text-3xl font-black">6</div>
-                </div>
-                <div className="rounded-2xl bg-slate-950/32 p-4">
-                  <div className="text-xs text-slate-400">Relatórios</div>
-                  <div className="mt-1 text-3xl font-black">PDF</div>
-                </div>
-              </div>
             </div>
           </div>
         </section>
