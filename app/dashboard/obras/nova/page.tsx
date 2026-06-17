@@ -37,6 +37,14 @@ export default function NovaVistoriaPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
+  const [criandoEmpresa, setCriandoEmpresa] = useState(false)
+  const [novaEmpresa, setNovaEmpresa] = useState({
+    name: '',
+    cnpj: '',
+    cidade: '',
+    uf: '',
+    grau_risco: '',
+  })
   const [criandoObra, setCriandoObra] = useState(false)
   const [novaObraNome, setNovaObraNome] = useState('')
   const [novaObraFuncionarios, setNovaObraFuncionarios] = useState('')
@@ -109,6 +117,42 @@ export default function NovaVistoriaPage() {
     setSelectedObra(null)
     await loadObras(emp.id)
     setStep('obra')
+  }
+
+  async function criarEmpresa() {
+    const nome = novaEmpresa.name.trim()
+    if (!nome) { toast.error('Informe a razão social da empresa'); return }
+    if (!consultoriaId || !avaliadorId) { toast.error('Não foi possível identificar sua consultoria'); return }
+
+    setSaving(true)
+    try {
+      const { data, error } = await supabase
+        .from('empresas_clientes')
+        .insert({
+          consultoria_id: consultoriaId,
+          name: nome,
+          cnpj: novaEmpresa.cnpj.trim() || null,
+          cidade: novaEmpresa.cidade.trim() || null,
+          uf: novaEmpresa.uf.trim().toUpperCase() || null,
+          grau_risco: novaEmpresa.grau_risco || null,
+          active: true,
+          created_by: avaliadorId,
+        })
+        .select('id, name, cnpj, cidade, uf, grau_risco')
+        .single()
+      if (error) throw error
+
+      const empresa = data as Empresa
+      setEmpresas(prev => [empresa, ...prev.filter(e => e.id !== empresa.id)])
+      setNovaEmpresa({ name: '', cnpj: '', cidade: '', uf: '', grau_risco: '' })
+      setCriandoEmpresa(false)
+      toast.success('Empresa cadastrada!')
+      await selectEmpresa(empresa)
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao cadastrar empresa')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function criarObra() {
@@ -229,8 +273,96 @@ export default function NovaVistoriaPage() {
         {/* STEP 1 — Empresa */}
         {step === 'empresa' && (
           <div>
-            <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">Qual empresa será vistoriada?</h2>
-            <p className="text-[var(--text-secondary)] text-sm mb-4">Selecione a empresa cliente</p>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">Qual empresa será vistoriada?</h2>
+                <p className="text-[var(--text-secondary)] text-sm">Selecione uma empresa cliente ou cadastre uma nova.</p>
+              </div>
+              <button
+                onClick={() => setCriandoEmpresa(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-hover)]"
+              >
+                <Plus size={15} /> Cadastrar empresa
+              </button>
+            </div>
+
+            {criandoEmpresa && (
+              <div className="mb-4 rounded-2xl border border-[var(--brand)]/50 bg-[var(--bg-surface)] p-4">
+                <div className="mb-3">
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">Nova empresa cliente</h3>
+                  <p className="text-xs text-[var(--text-muted)]">Esses dados serão usados para abrir a obra e iniciar a vistoria.</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Razão social *</label>
+                    <input
+                      value={novaEmpresa.name}
+                      onChange={e => setNovaEmpresa(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Nome da empresa"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--brand)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">CNPJ</label>
+                    <input
+                      value={novaEmpresa.cnpj}
+                      onChange={e => setNovaEmpresa(prev => ({ ...prev, cnpj: e.target.value }))}
+                      placeholder="00.000.000/0000-00"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--brand)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Cidade</label>
+                    <input
+                      value={novaEmpresa.cidade}
+                      onChange={e => setNovaEmpresa(prev => ({ ...prev, cidade: e.target.value }))}
+                      placeholder="Cidade"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--brand)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">UF</label>
+                    <input
+                      value={novaEmpresa.uf}
+                      onChange={e => setNovaEmpresa(prev => ({ ...prev, uf: e.target.value.slice(0, 2).toUpperCase() }))}
+                      placeholder="UF"
+                      maxLength={2}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] px-3 py-2.5 text-sm uppercase text-[var(--text-primary)] outline-none transition focus:border-[var(--brand)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Grau de risco</label>
+                    <select
+                      value={novaEmpresa.grau_risco}
+                      onChange={e => setNovaEmpresa(prev => ({ ...prev, grau_risco: e.target.value }))}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--brand)]"
+                    >
+                      <option value="">Não informado</option>
+                      <option value="1">Grau 1</option>
+                      <option value="2">Grau 2</option>
+                      <option value="3">Grau 3</option>
+                      <option value="4">Grau 4</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => setCriandoEmpresa(false)}
+                    className="flex-1 rounded-xl border border-[var(--border)] px-3 py-2.5 text-sm font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={criarEmpresa}
+                    disabled={saving}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-hover)] disabled:opacity-60"
+                  >
+                    {saving ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
+                    Salvar e continuar
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Busca */}
             <div className="relative mb-4">
@@ -245,9 +377,18 @@ export default function NovaVistoriaPage() {
             </div>
 
             {empresasFiltradas.length === 0 ? (
-              <div className="text-center py-12">
-                <Building2 size={36} className="text-slate-700 mx-auto mb-3" />
-                <p className="text-[var(--text-muted)] text-sm">Nenhuma empresa encontrada</p>
+              <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-surface)] px-5 py-8 text-center">
+                <Building2 size={34} className="mx-auto mb-3 text-[var(--text-muted)]" />
+                <p className="text-sm font-bold text-[var(--text-primary)]">Nenhuma empresa encontrada</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  Cadastre a empresa cliente para liberar a criação da obra e iniciar a vistoria.
+                </p>
+                <button
+                  onClick={() => setCriandoEmpresa(true)}
+                  className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-hover)]"
+                >
+                  <Plus size={15} /> Cadastrar empresa
+                </button>
               </div>
             ) : (
               <div className="flex flex-col gap-2">
