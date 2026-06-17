@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import { consultarCnpj, formatCnpj, onlyDigits } from '@/lib/cnpj'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Building2, MapPin, Plus,
@@ -38,11 +39,17 @@ export default function NovaVistoriaPage() {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [criandoEmpresa, setCriandoEmpresa] = useState(false)
+  const [buscandoCnpj, setBuscandoCnpj] = useState(false)
   const [novaEmpresa, setNovaEmpresa] = useState({
     name: '',
     cnpj: '',
+    email: '',
+    phone: '',
+    endereco: '',
     cidade: '',
     uf: '',
+    cep: '',
+    cnae: '',
     grau_risco: '',
   })
   const [criandoObra, setCriandoObra] = useState(false)
@@ -119,6 +126,40 @@ export default function NovaVistoriaPage() {
     setStep('obra')
   }
 
+  async function buscarCnpjEmpresa(cnpj: string) {
+    const nums = onlyDigits(cnpj)
+    if (nums.length !== 14) return
+    setBuscandoCnpj(true)
+    try {
+      const data = await consultarCnpj(nums)
+      setNovaEmpresa(prev => ({
+        ...prev,
+        name: data.name || prev.name,
+        cnpj: data.cnpj || prev.cnpj,
+        email: data.email || prev.email,
+        phone: data.phone || prev.phone,
+        endereco: data.endereco || prev.endereco,
+        cidade: data.cidade || prev.cidade,
+        uf: data.uf || prev.uf,
+        cep: data.cep || prev.cep,
+        cnae: data.cnae || prev.cnae,
+        grau_risco: data.grau_risco || prev.grau_risco,
+      }))
+      toast.success(`Dados preenchidos automaticamente. Grau de risco ${data.grau_risco}.`)
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao consultar CNPJ')
+    } finally {
+      setBuscandoCnpj(false)
+    }
+  }
+
+  function handleNovaEmpresaCnpj(value: string) {
+    const nums = onlyDigits(value).slice(0, 14)
+    const cnpj = formatCnpj(nums)
+    setNovaEmpresa(prev => ({ ...prev, cnpj }))
+    if (nums.length === 14) buscarCnpjEmpresa(cnpj)
+  }
+
   async function criarEmpresa() {
     const nome = novaEmpresa.name.trim()
     if (!nome) { toast.error('Informe a razão social da empresa'); return }
@@ -132,8 +173,13 @@ export default function NovaVistoriaPage() {
           consultoria_id: consultoriaId,
           name: nome,
           cnpj: novaEmpresa.cnpj.trim() || null,
+          email: novaEmpresa.email || null,
+          phone: novaEmpresa.phone || null,
+          endereco: novaEmpresa.endereco || null,
           cidade: novaEmpresa.cidade.trim() || null,
           uf: novaEmpresa.uf.trim().toUpperCase() || null,
+          cep: novaEmpresa.cep || null,
+          cnae: novaEmpresa.cnae || null,
           grau_risco: novaEmpresa.grau_risco || null,
           active: true,
           created_by: avaliadorId,
@@ -144,7 +190,7 @@ export default function NovaVistoriaPage() {
 
       const empresa = data as Empresa
       setEmpresas(prev => [empresa, ...prev.filter(e => e.id !== empresa.id)])
-      setNovaEmpresa({ name: '', cnpj: '', cidade: '', uf: '', grau_risco: '' })
+      setNovaEmpresa({ name: '', cnpj: '', email: '', phone: '', endereco: '', cidade: '', uf: '', cep: '', cnae: '', grau_risco: '' })
       setCriandoEmpresa(false)
       toast.success('Empresa cadastrada!')
       await selectEmpresa(empresa)
@@ -306,10 +352,11 @@ export default function NovaVistoriaPage() {
                     <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">CNPJ</label>
                     <input
                       value={novaEmpresa.cnpj}
-                      onChange={e => setNovaEmpresa(prev => ({ ...prev, cnpj: e.target.value }))}
+                      onChange={e => handleNovaEmpresaCnpj(e.target.value)}
                       placeholder="00.000.000/0000-00"
                       className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--brand)]"
                     />
+                    {buscandoCnpj && <p className="mt-1 text-xs text-[var(--brand)]">Consultando CNPJ...</p>}
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Cidade</label>
@@ -345,6 +392,19 @@ export default function NovaVistoriaPage() {
                     </select>
                   </div>
                 </div>
+                {(novaEmpresa.cnae || novaEmpresa.endereco || novaEmpresa.email || novaEmpresa.phone) && (
+                  <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] p-3 text-xs text-[var(--text-secondary)]">
+                    <div className="font-bold text-[var(--text-primary)]">Dados preenchidos automaticamente</div>
+                    {novaEmpresa.cnae && <div className="mt-1">CNAE: {novaEmpresa.cnae}</div>}
+                    {novaEmpresa.endereco && <div className="mt-1">Endereço: {novaEmpresa.endereco}</div>}
+                    {(novaEmpresa.cep || novaEmpresa.cidade || novaEmpresa.uf) && (
+                      <div className="mt-1">Local: {[novaEmpresa.cep, novaEmpresa.cidade, novaEmpresa.uf].filter(Boolean).join(' - ')}</div>
+                    )}
+                    {(novaEmpresa.email || novaEmpresa.phone) && (
+                      <div className="mt-1">Contato: {[novaEmpresa.email, novaEmpresa.phone].filter(Boolean).join(' | ')}</div>
+                    )}
+                  </div>
+                )}
                 <div className="mt-4 flex gap-2">
                   <button
                     onClick={() => setCriandoEmpresa(false)}

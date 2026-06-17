@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import { consultarCnpj, formatCep, formatCnpj, onlyDigits } from '@/lib/cnpj'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Plus, Building2, X, Loader2,
@@ -115,55 +116,42 @@ export default function EmpresasPage() {
 
   // Busca CNPJ automática
   async function buscarCnpj(cnpj: string) {
-    const nums = cnpj.replace(/\D/g, '')
+    const nums = onlyDigits(cnpj)
     if (nums.length !== 14) return
     setBuscandoCnpj(true)
     try {
-      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${nums}`)
-      if (!res.ok) { toast.error('CNPJ não encontrado'); return }
-      const data = await res.json()
-
-      // Calcula grau de risco pelo CNAE principal
-      const cnaeCode = data.cnae_fiscal?.toString() || ''
-      let grau = '1'
-      if (['41','42','43'].some(c => cnaeCode.startsWith(c))) grau = '3'
-      else if (['05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33'].some(c => cnaeCode.startsWith(c))) grau = '2'
-
+      const data = await consultarCnpj(nums)
       setForm(f => ({
         ...f,
-        cnpj,
-        name: data.razao_social || f.name,
+        cnpj: data.cnpj || f.cnpj,
+        name: data.name || f.name,
         email: data.email ? data.email.toLowerCase() : f.email,
-        phone: data.ddd_telefone_1 ? `(${data.ddd_telefone_1.slice(0,2)}) ${data.ddd_telefone_1.slice(2).trim()}` : f.phone,
-        cnae: data.cnae_fiscal?.toString() || f.cnae,
-        grau_risco: grau,
-        cep: data.cep?.replace(/\D/g,'').replace(/(\d{5})(\d{3})/, '$1-$2') || f.cep,
-        endereco: [data.logradouro, data.numero, data.complemento].filter(Boolean).join(', ') || f.endereco,
-        cidade: data.municipio || f.cidade,
+        phone: data.phone || f.phone,
+        cnae: data.cnae || f.cnae,
+        grau_risco: data.grau_risco || f.grau_risco,
+        cep: data.cep || f.cep,
+        endereco: data.endereco || f.endereco,
+        cidade: data.cidade || f.cidade,
         uf: data.uf || f.uf,
       }))
-      toast.success('Dados preenchidos automaticamente!')
-    } catch {
-      toast.error('Erro ao consultar CNPJ')
+      toast.success(`Dados preenchidos automaticamente. Grau de risco ${data.grau_risco}.`)
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao consultar CNPJ')
     } finally {
       setBuscandoCnpj(false)
     }
   }
 
   function handleCnpjChange(value: string) {
-    const nums = value.replace(/\D/g, '').slice(0, 14)
-    let masked = nums
-    if (nums.length > 2)  masked = nums.slice(0,2) + '.' + nums.slice(2)
-    if (nums.length > 5)  masked = nums.slice(0,2) + '.' + nums.slice(2,5) + '.' + nums.slice(5)
-    if (nums.length > 8)  masked = nums.slice(0,2) + '.' + nums.slice(2,5) + '.' + nums.slice(5,8) + '/' + nums.slice(8)
-    if (nums.length > 12) masked = nums.slice(0,2) + '.' + nums.slice(2,5) + '.' + nums.slice(5,8) + '/' + nums.slice(8,12) + '-' + nums.slice(12)
+    const nums = onlyDigits(value).slice(0, 14)
+    const masked = formatCnpj(nums)
     update('cnpj', masked)
     if (nums.length === 14) buscarCnpj(masked)
   }
 
   // Busca CEP automática
   async function buscarCep(cep: string) {
-    const nums = cep.replace(/\D/g, '')
+    const nums = onlyDigits(cep)
     if (nums.length !== 8) return
     setBuscandoCep(true)
     try {
@@ -185,8 +173,8 @@ export default function EmpresasPage() {
   }
 
   function handleCepChange(value: string) {
-    const nums = value.replace(/\D/g, '').slice(0, 8)
-    const masked = nums.length > 5 ? nums.slice(0,5) + '-' + nums.slice(5) : nums
+    const nums = onlyDigits(value).slice(0, 8)
+    const masked = formatCep(nums)
     update('cep', masked)
     if (nums.length === 8) buscarCep(masked)
   }
