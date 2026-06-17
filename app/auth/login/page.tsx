@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  UserCheck,
   ShieldCheck,
   Sparkles,
 } from 'lucide-react'
@@ -161,14 +162,14 @@ export default function LoginPage() {
                 Acesso seguro
               </div>
               <h2 className="mt-5 text-3xl font-black tracking-tight text-[var(--text-primary)] sm:text-4xl">
-                Entre para continuar sua operação.
+                Acesse sua área técnica.
               </h2>
               <p className="mt-3 text-base leading-7 text-[var(--text-secondary)]">
-                Acesse vistorias, empresas, evidências e relatórios da sua consultoria.
+                Entre com suas credenciais para acompanhar vistorias, evidências, não conformidades e relatórios da sua consultoria.
               </p>
             </div>
 
-            <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-surface)] p-6 shadow-[var(--shadow)] sm:p-8">
+            <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-surface)] p-6 shadow-[0_24px_70px_rgba(15,35,71,0.12)] sm:p-8">
               <form onSubmit={handleLogin} className="flex flex-col gap-5">
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-bold text-[var(--text-secondary)]">E-mail</label>
@@ -218,11 +219,18 @@ export default function LoginPage() {
 
         </form>
 
-              <div className="mt-6 flex flex-col gap-3 border-t border-[var(--border)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-[var(--text-muted)]">Primeira vez na plataforma?</p>
-                <a href="/auth/register" className="inline-flex items-center gap-2 text-sm font-black text-[var(--brand)] transition hover:text-[var(--brand-hover)]">
-                  Criar conta <ArrowRight size={15} />
-                </a>
+              <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-primary)] p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand)]/10 text-[var(--brand)]">
+                    <UserCheck size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-[var(--text-primary)]">Acesso criado pela consultoria</p>
+                    <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
+                      Use o e-mail e a senha cadastrados pelo gestor. Para solicitar acesso ou recuperar credenciais, fale com o administrador da sua consultoria.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
