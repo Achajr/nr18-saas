@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  ShieldCheck,
   Sparkles,
 } from 'lucide-react'
 import Image from 'next/image'
@@ -116,20 +117,25 @@ export default function LoginPage() {
               Registre campo, acompanhe riscos, anexe evidências e gere pareceres comerciais com padrão profissional.
             </p>
 
-            <div className="mt-8 grid w-full max-w-xl grid-cols-3 gap-3">
+            <div className="mt-9 grid w-full max-w-2xl grid-cols-3 gap-4">
               {[
-                { label: 'Conformidade', value: 'NR 18', icon: ClipboardCheck },
-                { label: 'Empresas', value: 'Multi-cliente', icon: Building2 },
-                { label: 'Relatórios', value: 'Com IA', icon: BarChart3 },
+                { label: 'Checklist normativo', value: 'NR 18', desc: 'Itens técnicos, evidências e criticidade.', icon: ClipboardCheck },
+                { label: 'Operação por cliente', value: 'Multiempresa', desc: 'Obras, setores e responsáveis em um só fluxo.', icon: Building2 },
+                { label: 'Entrega profissional', value: 'Relatórios PDF', desc: 'Parecer técnico, plano de ação e comparativos.', icon: BarChart3 },
               ].map(item => (
-                <div key={item.label} className="rounded-2xl border border-white/12 bg-white/[0.08] p-4 backdrop-blur-xl">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-300/12 text-cyan-200">
-                    <item.icon size={18} />
+                <div key={item.label} className="group rounded-[22px] border border-white/14 bg-white/[0.075] p-5 text-left shadow-[0_18px_44px_rgba(8,18,42,0.18)] backdrop-blur-xl transition hover:border-cyan-200/35 hover:bg-white/[0.105]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-200/20 bg-cyan-300/12 text-cyan-200 shadow-inner shadow-white/10">
+                    <item.icon size={20} />
                   </div>
-                  <div className="mt-4 text-xl font-black text-white">{item.value}</div>
-                  <div className="mt-1 text-xs font-medium text-slate-300">{item.label}</div>
+                  <div className="mt-5 text-lg font-black text-white">{item.value}</div>
+                  <div className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-cyan-100/70">{item.label}</div>
+                  <p className="mt-3 text-sm leading-5 text-slate-300">{item.desc}</p>
                 </div>
               ))}
+            </div>
+            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/12 bg-slate-950/20 px-4 py-2 text-sm font-semibold text-slate-200">
+              <ShieldCheck size={16} className="text-emerald-200" />
+              Fluxo completo: vistoria, evidências, reavaliação e comparativo.
             </div>
           </div>
         </section>
