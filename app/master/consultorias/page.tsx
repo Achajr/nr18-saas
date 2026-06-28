@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import { fetchCnpjInfo, formatCnpj, formatPhone, getResponsavelFromQsa, onlyDigits } from '@/lib/cnpj'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Plus, Building2, X, Loader2,
@@ -91,23 +92,23 @@ export default function ConsultoriasPage() {
   }
 
   async function buscarCnpj(cnpj: string) {
-    const numeros = cnpj.replace(/\D/g, '')
+    const numeros = onlyDigits(cnpj)
     if (numeros.length !== 14) return
     setBuscandoCnpj(true)
     try {
-      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${numeros}`)
-      if (!res.ok) { toast.error('CNPJ não encontrado na Receita Federal'); return }
-      const data = await res.json()
+      const data = await fetchCnpjInfo(numeros)
+      if (!data) return
+      const email = data.email ? data.email.toLowerCase() : ''
       setForm(f => ({
         ...f,
-        cnpj,
+        cnpj: formatCnpj(numeros),
         name: data.razao_social || f.name,
-        email: data.email ? data.email.toLowerCase() : f.email,
-        phone: data.ddd_telefone_1
-          ? `(${data.ddd_telefone_1.slice(0, 2)}) ${data.ddd_telefone_1.slice(2).trim()}`
-          : f.phone,
+        email: email || f.email,
+        phone: formatPhone(data.ddd_telefone_1) || formatPhone(data.ddd_telefone_2) || f.phone,
+        responsavel_nome: getResponsavelFromQsa(data) || f.responsavel_nome,
+        responsavel_email: email || f.responsavel_email,
       }))
-      toast.success('Dados preenchidos automaticamente!')
+      toast.success('Dados da consultoria preenchidos!')
     } catch {
       toast.error('Erro ao consultar CNPJ')
     } finally {
@@ -116,12 +117,8 @@ export default function ConsultoriasPage() {
   }
 
   function handleCnpjChange(value: string) {
-    const nums = value.replace(/\D/g, '').slice(0, 14)
-    let masked = nums
-    if (nums.length > 2)  masked = nums.slice(0,2) + '.' + nums.slice(2)
-    if (nums.length > 5)  masked = nums.slice(0,2) + '.' + nums.slice(2,5) + '.' + nums.slice(5)
-    if (nums.length > 8)  masked = nums.slice(0,2) + '.' + nums.slice(2,5) + '.' + nums.slice(5,8) + '/' + nums.slice(8)
-    if (nums.length > 12) masked = nums.slice(0,2) + '.' + nums.slice(2,5) + '.' + nums.slice(5,8) + '/' + nums.slice(8,12) + '-' + nums.slice(12)
+    const nums = onlyDigits(value).slice(0, 14)
+    const masked = formatCnpj(nums)
     update('cnpj', masked)
     if (nums.length === 14) buscarCnpj(masked)
   }
@@ -215,11 +212,6 @@ export default function ConsultoriasPage() {
     free:       'bg-slate-700 text-[var(--text-primary)]',
     pro:        'bg-blue-900 text-blue-300',
     enterprise: 'bg-purple-900 text-purple-300',
-  }
-
-  const planLabel = (plan: string, max_avaliadores: number, max_empresas: number) => {
-    if (plan === 'enterprise') return 'Ilimitado'
-    return `${max_avaliadores} aval. · ${max_empresas} emp.`
   }
 
   return (
