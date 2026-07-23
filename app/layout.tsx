@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
@@ -7,11 +7,11 @@ import AppNav from '@/components/AppNav'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'NR18 Check',
-  description: 'Plataforma de vistorias, checklists e conformidade NR-18 com IA',
+  title: 'NR18 SaaS',
+  description: 'Sistema de vistoria e checklist NR-18 com IA',
 }
 
-export const viewport = {
+export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -20,7 +20,7 @@ export const viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" data-theme="light">
+    <html lang="pt-BR" data-theme="dark">
       <body className={inter.className}>
         <AppNav>
           {children}

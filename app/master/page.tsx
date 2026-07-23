@@ -3,12 +3,10 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import {
-  Building2, Users, FileText,
+  ShieldCheck, Building2, Users, FileText,
   TrendingUp, Plus, LogOut, ChevronRight,
   CheckCircle, AlertCircle, UserCog
 } from 'lucide-react'
-import toast from 'react-hot-toast'
-import BrandLogo from '@/components/BrandLogo'
 
 interface Stats {
   total_consultorias: number
@@ -70,7 +68,7 @@ export default function MasterPage() {
 
       setStats({
         total_consultorias: cons?.length || 0,
-        consultorias_ativas: cons?.filter(c => c.active).length || 0,
+        consultorias_ativas: cons?.filter((c: any) => c.active).length || 0,
         total_avaliadores: totalAval || 0,
         total_obras: totalObras || 0,
         total_vistorias: totalVist || 0,
@@ -110,7 +108,13 @@ export default function MasterPage() {
       {/* Header */}
       <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <BrandLogo size="sm" subtitle="Painel Master" />
+          <div className="w-9 h-9 bg-[var(--brand)] rounded-xl flex items-center justify-center">
+            <ShieldCheck size={20} color="#E6F1FB" />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-[var(--text-primary)]">Vistoria NR 18</h1>
+            <p className="text-xs text-[var(--text-muted)]">Painel Master</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-[var(--text-secondary)] hidden sm:block">{masterName}</span>

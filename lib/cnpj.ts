@@ -18,6 +18,19 @@ export interface BrasilApiCnpj {
   qsa?: Array<{ nome_socio?: string | null; qualificacao_socio?: string | null }>
 }
 
+export type DadosCnpj = {
+  name: string
+  cnpj: string
+  email: string
+  phone: string
+  endereco: string
+  cidade: string
+  uf: string
+  cep: string
+  cnae: string
+  grau_risco: string
+}
+
 type RawCnpjData = Record<string, unknown>
 
 const GRAU_RISCO_2_PREFIXES = [
@@ -156,4 +169,25 @@ export async function fetchCnpjInfo(cnpj: string) {
   const res = await fetch(`/api/cnpj/${nums}`)
   if (!res.ok) throw new Error('CNPJ não encontrado')
   return res.json() as Promise<BrasilApiCnpj>
+}
+
+export async function consultarCnpj(cnpj: string): Promise<DadosCnpj> {
+  const data = await fetchCnpjInfo(cnpj)
+  if (!data) throw new Error('Informe um CNPJ válido com 14 dígitos.')
+
+  const cnaeCode = getCnaeCode(data)
+  const cnaeDescricao = data.cnae_fiscal_descricao?.trim() || ''
+
+  return {
+    name: data.razao_social || data.nome_fantasia || '',
+    cnpj: formatCnpj(data.cnpj || cnpj),
+    email: data.email || '',
+    phone: formatPhone(data.ddd_telefone_1 || data.ddd_telefone_2 || data.telefone || ''),
+    endereco: formatEndereco(data),
+    cidade: data.municipio || '',
+    uf: data.uf || '',
+    cep: formatCep(data.cep),
+    cnae: [cnaeCode, cnaeDescricao].filter(Boolean).join(' - '),
+    grau_risco: calculateGrauRisco(cnaeCode),
+  }
 }

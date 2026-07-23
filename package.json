@@ -7,16 +7,16 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "create-access": "node scripts/create-access.mjs"
+    "db": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:seed:master": "node prisma/seed-master.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
     "@hookform/resolvers": "^5.4.0",
+    "@prisma/client": "6.19.3",
     "@react-pdf/renderer": "^4.5.1",
-    "@supabase/auth-helpers-nextjs": "^0.15.0",
-    "@supabase/auth-helpers-react": "^0.15.0",
-    "@supabase/ssr": "^0.10.3",
-    "@supabase/supabase-js": "^2.107.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "framer-motion": "^12.40.0",
@@ -44,6 +44,7 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "postcss": "^8",
+    "prisma": "6.19.3",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }

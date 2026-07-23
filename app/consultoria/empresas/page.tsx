@@ -2,7 +2,17 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import { consultarCnpj, formatCep, formatCnpj, onlyDigits } from '@/lib/cnpj'
+import {
+  calculateGrauRisco,
+  fetchCnpjInfo,
+  formatCep,
+  formatCnpj,
+  formatEndereco,
+  formatPhone,
+  getCnaeCode,
+  getResponsavelFromQsa,
+  onlyDigits,
+} from '@/lib/cnpj'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Plus, Building2, X, Loader2,
@@ -120,23 +130,27 @@ export default function EmpresasPage() {
     if (nums.length !== 14) return
     setBuscandoCnpj(true)
     try {
-      const data = await consultarCnpj(nums)
+      const data = await fetchCnpjInfo(nums)
+      if (!data) return
+      const cnaeCode = getCnaeCode(data)
+
       setForm(f => ({
         ...f,
-        cnpj: data.cnpj || f.cnpj,
-        name: data.name || f.name,
+        cnpj: formatCnpj(nums),
+        name: data.razao_social || f.name,
         email: data.email ? data.email.toLowerCase() : f.email,
-        phone: data.phone || f.phone,
-        cnae: data.cnae || f.cnae,
-        grau_risco: data.grau_risco || f.grau_risco,
-        cep: data.cep || f.cep,
-        endereco: data.endereco || f.endereco,
-        cidade: data.cidade || f.cidade,
+        phone: formatPhone(data.ddd_telefone_1) || formatPhone(data.ddd_telefone_2) || f.phone,
+        cnae: cnaeCode || f.cnae,
+        grau_risco: calculateGrauRisco(cnaeCode),
+        cep: formatCep(data.cep) || f.cep,
+        endereco: formatEndereco(data) || f.endereco,
+        cidade: data.municipio || f.cidade,
         uf: data.uf || f.uf,
+        responsavel_nome: getResponsavelFromQsa(data) || f.responsavel_nome,
       }))
-      toast.success(`Dados preenchidos automaticamente. Grau de risco ${data.grau_risco}.`)
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao consultar CNPJ')
+      toast.success('Dados da empresa preenchidos!')
+    } catch {
+      toast.error('Erro ao consultar CNPJ')
     } finally {
       setBuscandoCnpj(false)
     }
@@ -151,7 +165,7 @@ export default function EmpresasPage() {
 
   // Busca CEP automática
   async function buscarCep(cep: string) {
-    const nums = onlyDigits(cep)
+    const nums = cep.replace(/\D/g, '')
     if (nums.length !== 8) return
     setBuscandoCep(true)
     try {
@@ -173,8 +187,8 @@ export default function EmpresasPage() {
   }
 
   function handleCepChange(value: string) {
-    const nums = onlyDigits(value).slice(0, 8)
-    const masked = formatCep(nums)
+    const nums = value.replace(/\D/g, '').slice(0, 8)
+    const masked = nums.length > 5 ? nums.slice(0,5) + '-' + nums.slice(5) : nums
     update('cep', masked)
     if (nums.length === 8) buscarCep(masked)
   }

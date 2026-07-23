@@ -1,14 +1,14 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { useRouter, useParams, useSearchParams } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import { CHECKLIST, MULTA_INFO, getChecklistItemMeta, type ChecklistBloco, type ChecklistItem } from '@/lib/checklist-data'
-import { findChecklistBloco, findChecklistItem, loadChecklistModelo } from '@/lib/checklist-runtime'
+import { CHECKLIST, MULTA_INFO, getChecklistItemMeta, type ChecklistItem } from '@/lib/checklist-data'
+import { fetchCnpjInfo, formatCnpj, onlyDigits } from '@/lib/cnpj'
 import toast from 'react-hot-toast'
 import {
-  ArrowLeft, Camera, Trash2, Loader2, CheckCircle2,
+  ArrowLeft, Camera, Trash2, Loader2,
   ChevronDown, ChevronUp, Sparkles, FileText, Save,
-  AlertTriangle, Info, X, Plus, Building2
+  Info, X, Plus, Building2
 } from 'lucide-react'
 
 type Resposta = 'C' | 'NC' | 'NA' | ''
@@ -35,12 +35,6 @@ interface ItemState {
   db_id?: string
   gerando_ia?: boolean
   empresas_selecionadas: string[] // ['principal'] ou ['principal', uuid, ...]
-}
-
-interface BaseReavaliacaoResumo {
-  numero: string
-  total: number
-  naoConformes: number
 }
 
 interface VistoriaInfo {
@@ -128,8 +122,7 @@ async function atualizarItemVistoria(id: string, payload: Record<string, any>) {
   if (fallback.error) throw fallback.error
 }
 
-function resolverUrlFoto(storagePath?: string | null) {
-  if (!storagePath) return ''
+function resolverUrlFoto(storagePath: string) {
   if (/^(https?:|data:|\/)/.test(storagePath)) return storagePath
   return supabase.storage.from('vistoria-fotos').getPublicUrl(storagePath).data.publicUrl
 }
@@ -137,16 +130,11 @@ function resolverUrlFoto(storagePath?: string | null) {
 export default function ChecklistPage() {
   const router = useRouter()
   const params = useParams()
-  const searchParams = useSearchParams()
   const vistoriaId = params.id as string
-  const focoBlocoId = searchParams.get('foco') || ''
-  const baseVistoriaId = searchParams.get('base') || ''
 
   const [vistoria, setVistoria] = useState<VistoriaInfo | null>(null)
-  const [checklist, setChecklist] = useState<ChecklistBloco[]>(CHECKLIST)
   const [itens, setItens] = useState<Record<string, ItemState>>({})
   const [fotos, setFotos] = useState<Record<string, { url: string; storage_path?: string; db_id?: string }[]>>({})
-  const [empreiteiras, setEmpreiteiras] = useState<Empreiteira[]>([])
   const [chips, setChips] = useState<EmpresaChip[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -156,10 +144,10 @@ export default function ChecklistPage() {
   const [modalEmpreiteira, setModalEmpreiteira] = useState(false)
   const [novaEmp, setNovaEmp] = useState({ name: '', cnpj: '', num_funcionarios: '' })
   const [salvandoEmp, setSalvandoEmp] = useState(false)
+  const [buscandoEmpCnpj, setBuscandoEmpCnpj] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [fotoItemAlvo, setFotoItemAlvo] = useState<string | null>(null)
   const [consultoriaId, setConsultoriaId] = useState('')
-  const [baseResumo, setBaseResumo] = useState<BaseReavaliacaoResumo | null>(null)
 
   useEffect(() => { init() }, [vistoriaId])
 
@@ -169,12 +157,7 @@ export default function ChecklistPage() {
       if (!user) { router.push('/auth/login'); return }
 
       const { data: av } = await supabase.from('avaliadores').select('consultoria_id').eq('id', user.id).single()
-      let checklistAtivo: ChecklistBloco[] = CHECKLIST
-      if (av) {
-        setConsultoriaId(av.consultoria_id)
-        checklistAtivo = await loadChecklistModelo(supabase, av.consultoria_id)
-        setChecklist(checklistAtivo)
-      }
+      if (av) setConsultoriaId(av.consultoria_id)
 
       const { data: v } = await supabase
         .from('vistorias')
@@ -182,63 +165,20 @@ export default function ChecklistPage() {
         .eq('id', vistoriaId).single()
       if (!v) { toast.error('Vistoria não encontrada'); router.push('/dashboard'); return }
       setVistoria(v as any)
-      setSecoesAbertas({ [focoBlocoId || checklistAtivo[0].id]: true })
+      setSecoesAbertas({ [CHECKLIST[0].id]: true })
 
       // Carrega empreiteiras da obra
       await carregarEmpreiteiras((v as any).obra_id, (v as any).obra?.empresa_cliente?.name || 'Empresa')
 
       // Estado inicial dos itens
       const estado: Record<string, ItemState> = {}
-      checklistAtivo.forEach(bloco => {
+      CHECKLIST.forEach(bloco => {
         bloco.itens.forEach(item => {
           estado[item.id] = { bloco_id: bloco.id, item_id: item.id, resposta: '', observacao: '', empresas_selecionadas: ['principal'] }
         })
       })
 
-      if (baseVistoriaId && baseVistoriaId !== vistoriaId) {
-        const [{ data: baseVistoria }, { data: baseItens }] = await Promise.all([
-          supabase.from('vistorias').select('numero').eq('id', baseVistoriaId).single(),
-          supabase.from('vistoria_itens').select('*').eq('vistoria_id', baseVistoriaId),
-        ])
-
-        if (baseItens && baseItens.length > 0) {
-          const baseItemDbIds = baseItens.map((s: any) => s.id)
-          const { data: baseVinculos } = await supabase
-            .from('vistoria_item_empresas')
-            .select('item_id, empresa_tipo, empreiteira_id')
-            .in('item_id', baseItemDbIds)
-
-          baseItens.forEach((s: any) => {
-            if (estado[s.item_id]) {
-              estado[s.item_id].resposta = s.status || ''
-              estado[s.item_id].observacao = s.observacao || ''
-
-              const emps = (baseVinculos || []).filter((v: any) => v.item_id === s.id)
-              if (emps.length > 0) {
-                const empresasSelecionadas = emps.map((e: any) =>
-                  e.empresa_tipo === 'principal' ? 'principal' : e.empreiteira_id
-                ).filter(Boolean)
-                if (empresasSelecionadas.length > 0) {
-                  estado[s.item_id].empresas_selecionadas = empresasSelecionadas
-                }
-              }
-            }
-          })
-
-          const itensBaseVisiveis = baseItens.filter((s: any) => !focoBlocoId || s.bloco_id === focoBlocoId)
-          setBaseResumo({
-            numero: (baseVistoria as any)?.numero || '',
-            total: itensBaseVisiveis.length,
-            naoConformes: itensBaseVisiveis.filter((s: any) => s.status === 'NC').length,
-          })
-        } else {
-          setBaseResumo(null)
-        }
-      } else {
-        setBaseResumo(null)
-      }
-
-      // Carrega respostas salvas da vistoria atual. Elas prevalecem sobre a base da reavaliação.
+      // Carrega respostas salvas
       const { data: saved } = await supabase.from('vistoria_itens').select('*').eq('vistoria_id', vistoriaId)
       if (saved && saved.length > 0) {
         // Carrega vinculos de empresas por item
@@ -256,12 +196,9 @@ export default function ChecklistPage() {
             // Restaura empresas selecionadas
             const emps = (vinculos || []).filter((v: any) => v.item_id === s.id)
             if (emps.length > 0) {
-              const empresasSelecionadas = emps.map((e: any) =>
+              estado[s.item_id].empresas_selecionadas = emps.map((e: any) =>
                 e.empresa_tipo === 'principal' ? 'principal' : e.empreiteira_id
-              ).filter(Boolean)
-              if (empresasSelecionadas.length > 0) {
-                estado[s.item_id].empresas_selecionadas = empresasSelecionadas
-              }
+              )
             }
           }
         })
@@ -269,13 +206,11 @@ export default function ChecklistPage() {
       setItens(estado)
 
       // Carrega fotos
-      const dbItemToChecklistId = new Map((saved || []).map((s: any) => [s.id, s.item_id]))
       const { data: savedFotos } = await supabase.from('vistoria_fotos').select('id, storage_path, item_id, vistoria_item_id').eq('vistoria_id', vistoriaId)
       if (savedFotos && savedFotos.length > 0) {
         const fm: Record<string, any[]> = {}
         savedFotos.forEach((f: any) => {
-          const vinculoItemId = f.item_id || f.vistoria_item_id
-          const itemFotoId = dbItemToChecklistId.get(vinculoItemId) || vinculoItemId
+          const itemFotoId = f.item_id || f.vistoria_item_id
           if (!itemFotoId) return
           if (!fm[itemFotoId]) fm[itemFotoId] = []
           fm[itemFotoId].push({ url: resolverUrlFoto(f.storage_path), storage_path: f.storage_path, db_id: f.id })
@@ -289,7 +224,6 @@ export default function ChecklistPage() {
   async function carregarEmpreiteiras(obraId: string, empresaNome: string) {
     const { data } = await supabase.from('obra_empreiteiras').select('*').eq('obra_id', obraId).eq('ativa', true).order('created_at')
     const lista = data || []
-    setEmpreiteiras(lista)
 
     const chipsArr: EmpresaChip[] = [
       { id: 'principal', label: empresaNome, abrev: abreviar(empresaNome), color: CHIP_COLORS[0] },
@@ -305,13 +239,13 @@ export default function ChecklistPage() {
     if (!vistoria?.obra_id) return
     setSalvandoEmp(true)
     try {
-      const { data, error } = await supabase.from('obra_empreiteiras').insert({
+      const { error } = await supabase.from('obra_empreiteiras').insert({
         obra_id: vistoria.obra_id,
         consultoria_id: consultoriaId,
         name: novaEmp.name.trim(),
         cnpj: novaEmp.cnpj.trim(),
         num_funcionarios: parseInt(novaEmp.num_funcionarios) || 0,
-      }).select().single()
+      })
       if (error) throw error
       toast.success('Empreiteira adicionada!')
       setNovaEmp({ name: '', cnpj: '', num_funcionarios: '' })
@@ -319,6 +253,33 @@ export default function ChecklistPage() {
       await carregarEmpreiteiras(vistoria.obra_id, vistoria.obra?.empresa_cliente?.name || 'Empresa')
     } catch (err: any) { toast.error(err.message || 'Erro ao adicionar empreiteira') }
     finally { setSalvandoEmp(false) }
+  }
+
+  async function buscarCnpjEmpreiteira(cnpj: string) {
+    const nums = onlyDigits(cnpj)
+    if (nums.length !== 14) return
+    setBuscandoEmpCnpj(true)
+    try {
+      const data = await fetchCnpjInfo(nums)
+      if (!data) return
+      setNovaEmp(p => ({
+        ...p,
+        cnpj: formatCnpj(nums),
+        name: data.razao_social || p.name,
+      }))
+      toast.success('Dados da empreiteira preenchidos!')
+    } catch {
+      toast.error('Erro ao consultar CNPJ')
+    } finally {
+      setBuscandoEmpCnpj(false)
+    }
+  }
+
+  function handleEmpreiteiraCnpjChange(value: string) {
+    const nums = onlyDigits(value).slice(0, 14)
+    const formatted = formatCnpj(nums)
+    setNovaEmp(p => ({ ...p, cnpj: formatted }))
+    if (nums.length === 14) buscarCnpjEmpreiteira(formatted)
   }
 
   function toggleEmpresa(item_id: string, empresa_id: string) {
@@ -351,21 +312,24 @@ export default function ChecklistPage() {
   async function salvarItens(statusVistoria: string, silent = false) {
     setSaving(true)
     try {
-      const respondidos = Object.values(itens).filter(i => i.resposta !== '' && itemIdsVisiveis.has(i.item_id))
+      const respondidos = Object.values(itens).filter(i => i.resposta !== '')
       if (respondidos.length === 0) {
         if (!silent) toast.error('Responda pelo menos um item')
         setSaving(false)
         return false
       }
       for (const it of respondidos) {
-        const item = findChecklistItem(checklist, it.item_id)
-        const bloco = checklist.find(b => b.itens.some(i => i.id === it.item_id))
+        const item = CHECKLIST.flatMap(b => b.itens).find(i => i.id === it.item_id)
+        const bloco = CHECKLIST.find(b => b.itens.some(i => i.id === it.item_id))
         if (!item) continue
 
         let dbId = it.db_id
-        const observacao = it.resposta === 'NC' ? (it.observacao || null) : null
         if (dbId) {
-          await atualizarItemVistoria(dbId, { status: it.resposta, observacao, ...metadataPersistencia(item) })
+          await atualizarItemVistoria(dbId, {
+            status: it.resposta,
+            observacao: it.observacao || null,
+            ...metadataPersistencia(item),
+          })
         } else {
           const data = await inserirItemVistoria({
             vistoria_id: vistoriaId,
@@ -380,7 +344,7 @@ export default function ChecklistPage() {
             item_nr_texto: item.nr,
             ...metadataPersistencia(item),
             status: it.resposta,
-            observacao,
+            observacao: it.observacao || null,
           })
           if (data) {
             dbId = data.id
@@ -389,10 +353,8 @@ export default function ChecklistPage() {
         }
 
         // Salva vinculos de empresas para NCs
-        if (dbId) {
-          await supabase.from('vistoria_item_empresas').delete().eq('item_id', dbId)
-        }
         if (dbId && it.resposta === 'NC') {
+          await supabase.from('vistoria_item_empresas').delete().eq('item_id', dbId)
           for (const empId of it.empresas_selecionadas) {
             await supabase.from('vistoria_item_empresas').insert({
               vistoria_id: vistoriaId,
@@ -419,17 +381,17 @@ export default function ChecklistPage() {
   }
 
   async function concluirVistoria() {
-    const respondidos = Object.values(itens).filter(i => i.resposta !== '' && itemIdsVisiveis.has(i.item_id))
+    const respondidos = Object.values(itens).filter(i => i.resposta !== '')
     if (respondidos.length === 0) { toast.error('Responda pelo menos um item'); return }
     const conformes = respondidos.filter(i => i.resposta === 'C').length
     const ncs = respondidos.filter(i => i.resposta === 'NC').length
     const na = respondidos.filter(i => i.resposta === 'NA').length
     const aplicaveis = respondidos.length - na
     const indice = aplicaveis > 0 ? Math.round((conformes / aplicaveis) * 10000) / 100 : 100
-    let classificacao = 'Crítico'
-    if (indice >= 90) classificacao = 'Satisfatório'
-    else if (indice >= 70) classificacao = 'Parcialmente satisfatório'
-    else if (indice >= 50) classificacao = 'Insatisfatório'
+    let classificacao = 'Critico'
+    if (indice >= 90) classificacao = 'Satisfatorio'
+    else if (indice >= 70) classificacao = 'Parcialmente satisfatorio'
+    else if (indice >= 50) classificacao = 'Insatisfatorio'
     setConcluindo(true)
     try {
       const ok = await salvarItens('concluida', true)
@@ -459,8 +421,8 @@ export default function ChecklistPage() {
     const it = itens[item_id]
     let db_item_id = it?.db_id
     if (!db_item_id) {
-      const item = findChecklistItem(checklist, item_id)
-      const bloco = checklist.find(b => b.itens.some(i => i.id === item_id))
+      const item = CHECKLIST.flatMap(b => b.itens).find(i => i.id === item_id)
+      const bloco = CHECKLIST.find(b => b.itens.some(i => i.id === item_id))
       if (!item) return
       const data = await inserirItemVistoria({
         vistoria_id: vistoriaId, item_id, bloco_id: it.bloco_id,
@@ -481,13 +443,13 @@ export default function ChecklistPage() {
         const { data: urlData } = supabase.storage.from('vistoria-fotos').getPublicUrl(path)
         const { data: fotoData } = await supabase.from('vistoria_fotos').insert({
           vistoria_id: vistoriaId,
-          organization_id: consultoriaId || null,
+          organization_id: consultoriaId,
           item_id: db_item_id,
           vistoria_item_id: db_item_id,
           storage_path: path,
           filename: file.name,
           mime_type: file.type,
-          tipo: 'nc',
+          tipo: 'nc'
         }).select('id').single()
         setFotos(prev => {
           const arr = [...(prev[item_id] || [])]
@@ -512,8 +474,8 @@ export default function ChecklistPage() {
     if (!it.observacao || it.observacao.trim().length < 10) { toast.error('Escreva a observação primeiro (mín. 10 caracteres)'); return }
     setItens(prev => ({ ...prev, [item_id]: { ...prev[item_id], gerando_ia: true } }))
     try {
-      const item = findChecklistItem(checklist, item_id)
-      const bloco = checklist.find(b => b.itens.some(i => i.id === item_id))
+      const item = CHECKLIST.flatMap(b => b.itens).find(i => i.id === item_id)
+      const bloco = CHECKLIST.find(b => b.itens.some(i => i.id === item_id))
       const res = await fetch('/api/ia-observacao', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -529,12 +491,7 @@ export default function ChecklistPage() {
     finally { setItens(prev => ({ ...prev, [item_id]: { ...prev[item_id], gerando_ia: false } })) }
   }
 
-  const checklistVisivel = focoBlocoId
-    ? checklist.filter(bloco => bloco.id === focoBlocoId)
-    : checklist
-  const focoBloco = focoBlocoId ? findChecklistBloco(checklist, focoBlocoId) : null
-  const itemIdsVisiveis = new Set(checklistVisivel.flatMap(bloco => bloco.itens.map(item => item.id)))
-  const todosItens = Object.values(itens).filter(item => itemIdsVisiveis.has(item.item_id))
+  const todosItens = Object.values(itens)
   const totalItens = todosItens.length
   const respondidos = todosItens.filter(i => i.resposta !== '').length
   const conformes = todosItens.filter(i => i.resposta === 'C').length
@@ -554,7 +511,7 @@ export default function ChecklistPage() {
           <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-surface)]">
               <div><span className="text-xs font-mono text-[var(--brand)]">{modalNr.ref}</span><h3 className="text-sm font-semibold text-[var(--text-primary)] mt-0.5">Texto legal NR-18</h3></div>
-              <button onClick={() => setModalNr(null)} className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--text-muted)] transition hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]" aria-label="Fechar"><X size={18} /></button>
+              <button onClick={() => setModalNr(null)} className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"><X size={18} /></button>
             </div>
             <div className="px-5 py-4 space-y-3">
               <div className="flex gap-2 flex-wrap">
@@ -562,19 +519,19 @@ export default function ChecklistPage() {
                 <span className={'text-xs px-2 py-1 rounded-full font-medium ' + MULTA_CONFIG[modalNr.multa].bg + ' ' + MULTA_CONFIG[modalNr.multa].text}>{MULTA_INFO[modalNr.multa].label} — {MULTA_INFO[modalNr.multa].faixa}</span>
                 <span className="text-xs px-2 py-1 rounded-full bg-[var(--border)] text-[var(--text-secondary)]">{modalNr.perigo}</span>
               </div>
-              <p className="text-sm text-[var(--text-primary)] leading-relaxed">{modalNr.nr}</p>
               {(() => {
                 const meta = getChecklistItemMeta(modalNr)
                 return (
                   <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] p-3 text-xs text-[var(--text-secondary)] space-y-2">
                     <div><span className="font-bold text-[var(--text-primary)]">Etapa:</span> {meta.etapa_label}</div>
                     <div><span className="font-bold text-[var(--text-primary)]">Verificação:</span> {meta.tipo_verificacao_label}</div>
-                    <div><span className="font-bold text-[var(--text-primary)]">Evidências:</span> {meta.evidencias_label.join(', ')}</div>
+                    <div><span className="font-bold text-[var(--text-primary)]">Evidências esperadas:</span> {meta.evidencias_label.join(', ')}</div>
                     <div><span className="font-bold text-[var(--text-primary)]">Aplicabilidade:</span> {meta.aplicabilidade}</div>
                     <div><span className="font-bold text-[var(--text-primary)]">Critério:</span> {meta.criterio}</div>
                   </div>
                 )
               })()}
+              <p className="text-sm text-[var(--text-primary)] leading-relaxed">{modalNr.nr}</p>
               <p className="text-xs text-[var(--text-muted)] italic">{MULTA_INFO[modalNr.multa].desc}</p>
             </div>
           </div>
@@ -590,34 +547,15 @@ export default function ChecklistPage() {
                 <h3 className="text-sm font-semibold text-[var(--text-primary)]">Adicionar Empreiteira</h3>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5">Digite o CNPJ para buscar automaticamente</p>
               </div>
-              <button onClick={() => setModalEmpreiteira(false)} className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--text-muted)] transition hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]" aria-label="Fechar"><X size={18} /></button>
+              <button onClick={() => setModalEmpreiteira(false)} className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"><X size={18} /></button>
             </div>
             <div className="px-5 py-4 space-y-3">
               <div className="relative">
                 <input type="text" value={novaEmp.cnpj}
-                  onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '').slice(0, 14)
-                    const fmt = val.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
-                      .replace(/(\d{2})(\d{3})(\d{3})(\d{4})/, '$1.$2.$3/$4')
-                      .replace(/(\d{2})(\d{3})(\d{3})/, '$1.$2.$3')
-                      .replace(/(\d{2})(\d{3})/, '$1.$2')
-                    setNovaEmp(p => ({ ...p, cnpj: fmt }))
-                    const digits = val.replace(/\D/g, '')
-                    if (digits.length === 14) {
-                      setNovaEmp(p => ({ ...p, name: 'Buscando...' }))
-                      fetch('https://brasilapi.com.br/api/cnpj/v1/' + digits)
-                        .then(r => r.json())
-                        .then(d => {
-                          if (d.razao_social) {
-                            setNovaEmp(p => ({ ...p, name: d.razao_social, cnpj: fmt }))
-                            toast.success('Empresa encontrada!')
-                          }
-                        })
-                        .catch(() => setNovaEmp(p => ({ ...p, name: '' })))
-                    }
-                  }}
+                  onChange={e => handleEmpreiteiraCnpjChange(e.target.value)}
                   placeholder="CNPJ (busca automática)"
-                  className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition" />
+                  className="w-full px-4 py-3 pr-11 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition" />
+                {buscandoEmpCnpj && <Loader2 size={16} className="absolute right-4 top-3.5 animate-spin text-[var(--brand)]" />}
               </div>
               <input type="text" value={novaEmp.name} onChange={e => setNovaEmp(p => ({ ...p, name: e.target.value }))}
                 placeholder="Nome da empreiteira"
@@ -626,9 +564,9 @@ export default function ChecklistPage() {
                 placeholder="Nº de funcionários na obra" min="1"
                 className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition" />
               <div className="flex gap-2 pt-1">
-                <button onClick={() => setModalEmpreiteira(false)} className="flex min-h-10 flex-1 items-center justify-center rounded-xl border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]">Cancelar</button>
+                <button onClick={() => setModalEmpreiteira(false)} className="flex-1 py-3 border border-[var(--border)] text-[var(--text-secondary)] rounded-xl text-sm transition hover:text-[var(--text-primary)]">Cancelar</button>
                 <button onClick={adicionarEmpreiteira} disabled={salvandoEmp}
-                  className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-[var(--brand-muted)] transition hover:bg-[var(--brand-hover)] disabled:opacity-60">
+                  className="flex-1 py-3 bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-[var(--brand-muted)]">
                   {salvandoEmp ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} Adicionar
                 </button>
               </div>
@@ -640,18 +578,17 @@ export default function ChecklistPage() {
       {/* Header */}
       <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-4 py-4 sticky top-0 z-20">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <button onClick={() => router.push('/dashboard')} className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--text-secondary)] transition hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]" aria-label="Voltar"><ArrowLeft size={20} /></button>
+          <button onClick={() => router.push('/dashboard')} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"><ArrowLeft size={20} /></button>
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-bold text-[var(--text-primary)] truncate">Checklist NR-18 — {vistoria?.obra?.empresa_cliente?.name || vistoria?.obra?.name}</h1>
             <div className="flex items-center gap-2 mt-0.5">
               <p className="text-xs text-[var(--text-muted)]">Vistoria {vistoria?.numero}</p>
-              {focoBloco && <span className="text-xs bg-[var(--brand-muted)] text-[var(--brand)] px-2 py-0.5 rounded-full">Reavaliação: {focoBloco.ref}</span>}
               {statusAtual === 'incompleta' && <span className="text-xs bg-amber-900/40 text-amber-400 px-2 py-0.5 rounded-full">Incompleta</span>}
               {statusAtual === 'concluida' && <span className="text-xs bg-green-900/40 text-green-400 px-2 py-0.5 rounded-full">Concluída</span>}
             </div>
           </div>
           <button onClick={() => setModalEmpreiteira(true)}
-            className="flex min-h-9 items-center gap-1.5 rounded-xl border border-[var(--brand)]/40 bg-[var(--brand)]/20 px-3 py-2 text-xs font-semibold text-[var(--brand)] transition hover:bg-[var(--brand)]/30"
+            className="flex items-center gap-1.5 px-3 py-2 bg-[var(--brand)]/20 hover:bg-[var(--brand)]/30 border border-[var(--brand)]/40 text-[var(--brand)] text-xs font-medium rounded-xl transition"
             title="Adicionar empreiteira">
             <Building2 size={14} /> Empreiteira
           </button>
@@ -675,54 +612,14 @@ export default function ChecklistPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-4 space-y-3">
-        {focoBloco && (
-          <div className="rounded-2xl border border-[var(--brand)]/30 bg-[var(--brand-muted)] p-4">
-            <div className="text-sm font-bold text-[var(--text-primary)]">Reavaliação focada</div>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              Esta nova vistoria vai avaliar apenas o setor {focoBloco.ref}. O relatório comparativo usará a vistoria anterior como base.
-            </p>
-            {baseResumo && (
-              <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">
-                Respostas da vistoria {baseResumo.numero || 'anterior'} preenchidas: {baseResumo.total} itens, {baseResumo.naoConformes} não conformidades para revisar.
-              </p>
-            )}
-            {baseVistoriaId && (
-              <button
-                onClick={() => router.push('/dashboard/vistorias/' + baseVistoriaId + '/relatorio')}
-                className="mt-3 inline-flex min-h-8 items-center rounded-lg border border-[var(--brand)]/25 px-3 py-1.5 text-xs font-bold text-[var(--brand)] transition hover:bg-[var(--brand-muted)] hover:text-[var(--brand-hover)]"
-              >
-                Ver relatório base
-              </button>
-            )}
-          </div>
-        )}
-
-        {!focoBloco && baseResumo && (
-          <div className="rounded-2xl border border-[var(--brand)]/30 bg-[var(--brand-muted)] p-4">
-            <div className="text-sm font-bold text-[var(--text-primary)]">Reavaliação com respostas preenchidas</div>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              As respostas da vistoria {baseResumo.numero || 'anterior'} foram carregadas como ponto de partida. Revise cada item, marque como Conforme quando corrigido ou mantenha Não conforme e atualize a justificativa.
-            </p>
-            <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">
-              {baseResumo.total} itens preenchidos, {baseResumo.naoConformes} não conformidades para revisar.
-            </p>
-            <button
-              onClick={() => router.push('/dashboard/vistorias/' + baseVistoriaId + '/relatorio')}
-              className="mt-3 inline-flex min-h-8 items-center rounded-lg border border-[var(--brand)]/25 px-3 py-1.5 text-xs font-bold text-[var(--brand)] transition hover:bg-[var(--brand-muted)] hover:text-[var(--brand-hover)]"
-            >
-              Ver relatório base
-            </button>
-          </div>
-        )}
-
-        {checklistVisivel.map(bloco => {
+        {CHECKLIST.map(bloco => {
           const itensBloco = bloco.itens.map(i => itens[i.id]).filter(Boolean)
           const respondidosBloco = itensBloco.filter(i => i.resposta !== '').length
           const ncBloco = itensBloco.filter(i => i.resposta === 'NC').length
           const aberto = secoesAbertas[bloco.id]
           return (
             <div key={bloco.id} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
-              <button onClick={() => toggleSecao(bloco.id)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-[var(--bg-elevated)]">
+              <button onClick={() => toggleSecao(bloco.id)} className="w-full px-4 py-4 flex items-center gap-3 text-left hover:bg-[var(--bg-elevated)] transition">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-mono text-[var(--brand)] flex-shrink-0">{bloco.ref}</span>
@@ -750,18 +647,19 @@ export default function ChecklistPage() {
                           <span className={'text-xs px-2 py-0.5 rounded-full font-medium ' + NIVEL_CONFIG[item.nivel].bg + ' ' + NIVEL_CONFIG[item.nivel].text}>{NIVEL_CONFIG[item.nivel].label}</span>
                           <span className={'text-xs px-2 py-0.5 rounded-full font-medium ' + MULTA_CONFIG[item.multa].bg + ' ' + MULTA_CONFIG[item.multa].text}>{MULTA_INFO[item.multa].label} {MULTA_INFO[item.multa].faixa}</span>
                           <span className="text-xs text-[var(--text-muted)] bg-[var(--border)]/50 px-2 py-0.5 rounded-full">{item.ref}</span>
-                          <button onClick={() => setModalNr(item)} className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-muted)] transition hover:bg-[var(--brand)]/10 hover:text-[var(--brand)]" title="Ver texto legal" aria-label="Ver texto legal"><Info size={14} /></button>
+                          <span className="text-xs text-[var(--brand)] bg-[var(--brand)]/10 px-2 py-0.5 rounded-full">{meta.tipo_verificacao_label}</span>
+                          <span className="text-xs text-[var(--text-secondary)] bg-[var(--bg-primary)] border border-[var(--border)] px-2 py-0.5 rounded-full">{meta.etapa_label}</span>
+                          <button onClick={() => setModalNr(item)} className="ml-auto p-1 text-[var(--text-muted)] hover:text-[var(--brand)] transition" title="Ver texto legal"><Info size={14} /></button>
                         </div>
                         <p className="text-sm text-[var(--text-primary)] leading-relaxed mb-3">{item.t}</p>
-                        <div className="mb-3 grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] p-3 text-xs text-[var(--text-secondary)] sm:grid-cols-2">
-                          <div><span className="font-bold text-[var(--text-primary)]">Etapa:</span> {meta.etapa_label}</div>
-                          <div><span className="font-bold text-[var(--text-primary)]">Verificação:</span> {meta.tipo_verificacao_label}</div>
-                          <div className="sm:col-span-2"><span className="font-bold text-[var(--text-primary)]">Evidências esperadas:</span> {meta.evidencias_label.join(', ')}</div>
+                        <div className="mb-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] space-y-1">
+                          <div><span className="font-semibold text-[var(--text-secondary)]">Aplicabilidade:</span> {meta.aplicabilidade}</div>
+                          <div><span className="font-semibold text-[var(--text-secondary)]">Evidências:</span> {meta.evidencias_label.join(', ')}</div>
                         </div>
-                        <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <div className="flex gap-2 mb-3">
                           {(['C', 'NC', 'NA'] as const).map(r => (
                             <button key={r} onClick={() => setResposta(item.id, r)}
-                              className={'flex min-h-10 flex-1 items-center justify-center rounded-xl border px-3 py-2 text-[13px] font-bold transition ' + (
+                              className={'flex-1 py-2.5 rounded-xl border text-xs font-bold transition ' + (
                                 it.resposta === r
                                   ? r === 'C'  ? 'border-[#3B6D11] bg-[#EAF3DE] text-[#3B6D11]'
                                   : r === 'NC' ? 'border-[#A32D2D] bg-[#FCEBEB] text-[#A32D2D]'
@@ -783,13 +681,13 @@ export default function ChecklistPage() {
                                     const sel = it.empresas_selecionadas.includes(c.id)
                                     return (
                                       <button key={c.id} onClick={() => toggleEmpresa(item.id, c.id)}
-                                        className={'min-h-8 rounded-full border px-3 py-1 text-xs font-semibold transition ' + (sel ? c.color + ' border-transparent' : 'bg-transparent border-[var(--border)] text-[var(--text-muted)] hover:border-slate-500')}>
+                                        className={'text-xs px-2.5 py-1 rounded-full font-medium transition border-2 ' + (sel ? c.color + ' border-transparent' : 'bg-transparent border-[var(--border)] text-[var(--text-muted)] hover:border-slate-500')}>
                                         {c.abrev}
                                       </button>
                                     )
                                   })}
                                   <button onClick={() => setModalEmpreiteira(true)}
-                                    className="flex min-h-8 items-center gap-1 rounded-full border border-[var(--brand)]/40 bg-[var(--brand)]/10 px-3 py-1 text-xs font-semibold text-[var(--brand)] transition hover:bg-[var(--brand)]/20">
+                                    className="text-xs px-2.5 py-1 rounded-full border border-[var(--brand)]/40 bg-[var(--brand)]/10 text-[var(--brand)] hover:bg-[var(--brand)]/20 transition flex items-center gap-1 font-medium">
                                     <Plus size={10} /> + empreiteira
                                   </button>
                                 </div>
@@ -798,30 +696,22 @@ export default function ChecklistPage() {
                             <div className="relative pl-2">
                               <textarea value={it.observacao} onChange={e => setObservacao(item.id, e.target.value)}
                                 placeholder="Descreva o que foi observado..." rows={3}
-                                className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] transition focus:border-[#A32D2D]/50 focus:outline-none" />
-                              <div className="mt-2 flex justify-end">
-                                <button
-                                  type="button"
-                                  onClick={() => gerarObservacaoIA(item.id)}
-                                  disabled={it.gerando_ia}
-                                  title="Reescrever com IA"
-                                  aria-label="Reescrever observação com IA"
-                                  className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[var(--brand)]/25 bg-white px-3 py-1.5 text-xs font-semibold text-[var(--brand)] shadow-sm transition hover:border-[var(--brand)]/45 hover:bg-[var(--brand)]/10 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                  {it.gerando_ia ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                                  <span>Reescrever IA</span>
-                                </button>
-                              </div>
+                                className="w-full px-3 py-2.5 pr-10 bg-[var(--bg-primary)] border border-[var(--border)] focus:border-[#A32D2D]/50 rounded-xl text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none transition resize-none" />
+                              <button onClick={() => gerarObservacaoIA(item.id)} disabled={it.gerando_ia}
+                                title="Reescrever com IA (escreva a observação primeiro)"
+                                className="absolute right-2 top-2 p-1.5 text-[var(--text-muted)] hover:text-[var(--brand)] transition rounded-lg hover:bg-[var(--brand)]/10">
+                                {it.gerando_ia ? <Loader2 size={15} className="animate-spin text-[var(--brand)]" /> : <Sparkles size={15} />}
+                              </button>
                             </div>
                             <div className="flex gap-2 flex-wrap pl-2">
                               {fotosItem.map((f, fi) => (
                                 <div key={fi} className="relative w-20 h-20 rounded-xl overflow-hidden border border-[var(--border)]">
                                   <img src={f.url} alt="" className="w-full h-full object-cover" />
-                                  <button onClick={() => removerFoto(item.id, f.url, f.db_id, f.storage_path)} className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#A32D2D] text-white shadow-sm" aria-label="Remover foto"><Trash2 size={11} /></button>
+                                  <button onClick={() => removerFoto(item.id, f.url, f.db_id, f.storage_path)} className="absolute top-1 right-1 p-0.5 bg-[#A32D2D] rounded-full"><Trash2 size={10} className="text-[var(--text-primary)]" /></button>
                                 </div>
                               ))}
                               <button onClick={() => abrirCamera(item.id)}
-                                className="flex h-[72px] w-[72px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-[var(--border)] text-[var(--text-muted)] transition hover:border-[var(--brand)]/50 hover:text-[var(--brand)]">
+                                className="w-20 h-20 border border-dashed border-[var(--border)] hover:border-[var(--brand)]/50 rounded-xl flex flex-col items-center justify-center gap-1 text-[var(--text-muted)] hover:text-[var(--brand)] transition">
                                 <Camera size={18} /><span className="text-xs">Foto</span>
                               </button>
                             </div>
@@ -841,11 +731,11 @@ export default function ChecklistPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-surface)] border-t border-[var(--border)] px-4 py-3 z-20">
         <div className="max-w-2xl mx-auto flex gap-2">
           <button onClick={salvarParcialmente} disabled={saving}
-            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] px-3 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] disabled:opacity-60">
+            className="flex-1 py-3 border border-[var(--border)] text-[var(--text-primary)] hover:text-[var(--text-primary)] rounded-2xl text-xs font-medium transition flex items-center justify-center gap-1.5">
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Salvar parcial
           </button>
           <button onClick={concluirVistoria} disabled={concluindo || respondidos === 0}
-            className="flex min-h-11 flex-[2] items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[var(--brand-muted)] transition hover:bg-[var(--brand-hover)] disabled:opacity-50">
+            className="flex-[2] py-3 bg-[var(--brand)] hover:bg-[var(--brand-hover)] disabled:opacity-50 text-white rounded-2xl text-sm font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-[var(--brand-muted)]">
             {concluindo ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
             Concluir e gerar relatório
           </button>
