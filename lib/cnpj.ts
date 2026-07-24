@@ -18,19 +18,6 @@ export interface BrasilApiCnpj {
   qsa?: Array<{ nome_socio?: string | null; qualificacao_socio?: string | null }>
 }
 
-export type DadosCnpj = {
-  name: string
-  cnpj: string
-  email: string
-  phone: string
-  endereco: string
-  cidade: string
-  uf: string
-  cep: string
-  cnae: string
-  grau_risco: string
-}
-
 type RawCnpjData = Record<string, unknown>
 
 const GRAU_RISCO_2_PREFIXES = [
@@ -171,23 +158,35 @@ export async function fetchCnpjInfo(cnpj: string) {
   return res.json() as Promise<BrasilApiCnpj>
 }
 
-export async function consultarCnpj(cnpj: string): Promise<DadosCnpj> {
-  const data = await fetchCnpjInfo(cnpj)
-  if (!data) throw new Error('Informe um CNPJ válido com 14 dígitos.')
+export interface ConsultarCnpjResult {
+  cnpj: string
+  name: string
+  email: string
+  phone: string
+  cnae: string
+  grau_risco: string
+  cep: string
+  endereco: string
+  cidade: string
+  uf: string
+}
 
-  const cnaeCode = getCnaeCode(data)
-  const cnaeDescricao = data.cnae_fiscal_descricao?.trim() || ''
+export async function consultarCnpj(cnpj: string): Promise<ConsultarCnpjResult> {
+  const data = await fetchCnpjInfo(cnpj)
+  if (!data) throw new Error('CNPJ inválido')
+
+  const cnae = getCnaeCode(data)
 
   return {
-    name: data.razao_social || data.nome_fantasia || '',
     cnpj: formatCnpj(data.cnpj || cnpj),
+    name: data.razao_social || data.nome_fantasia || '',
     email: data.email || '',
-    phone: formatPhone(data.ddd_telefone_1 || data.ddd_telefone_2 || data.telefone || ''),
+    phone: formatPhone(data.telefone || data.ddd_telefone_1 || data.ddd_telefone_2),
+    cnae,
+    grau_risco: calculateGrauRisco(cnae),
+    cep: formatCep(data.cep),
     endereco: formatEndereco(data),
     cidade: data.municipio || '',
     uf: data.uf || '',
-    cep: formatCep(data.cep),
-    cnae: [cnaeCode, cnaeDescricao].filter(Boolean).join(' - '),
-    grau_risco: calculateGrauRisco(cnaeCode),
   }
 }

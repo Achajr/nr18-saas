@@ -23,7 +23,6 @@ Reescreva o texto abaixo em linguagem tecnica formal de relatorio de vistoria. N
 
 Empresa: ${empresa}
 Obra: ${obra}
-Seção: ${secao_nome || 'Checklist NR-18'}
 Item NR-18: ${item_codigo} — ${item_descricao}
 
 Texto original do avaliador:

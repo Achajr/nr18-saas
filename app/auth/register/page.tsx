@@ -2,14 +2,14 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import { fetchCnpjInfo, formatCnpj, onlyDigits } from '@/lib/cnpj'
 import toast from 'react-hot-toast'
-import { ShieldCheck, Loader2, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
+import BrandLogo from '@/components/BrandLogo'
 
 const ESTADOS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
 
 const ROLES = [
-  { value: 'admin',      label: 'Administrador',                        registro: null },
+  { value: 'gestor',     label: 'Gestor da consultoria',                registro: null },
   { value: 'engenheiro', label: 'Engenheiro de Segurança do Trabalho',  registro: 'crea' },
   { value: 'tecnico',    label: 'Técnico de Segurança do Trabalho',     registro: 'mte' },
   { value: 'estagiario', label: 'Estagiário de Segurança do Trabalho',  registro: null },
@@ -20,10 +20,8 @@ export default function RegisterPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
-  const [buscandoCnpj, setBuscandoCnpj] = useState(false)
   const [role, setRole] = useState('tecnico')
   const [creaEstado, setCreaEstado] = useState('ES')
-  const [erroCadastro, setErroCadastro] = useState('')
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -38,37 +36,17 @@ export default function RegisterPage() {
     setForm(f => ({ ...f, [field]: value }))
   }
 
-  async function buscarCnpj(cnpj: string) {
-    const nums = onlyDigits(cnpj)
-    if (nums.length !== 14) return
-    setBuscandoCnpj(true)
-    try {
-      const data = await fetchCnpjInfo(nums)
-      if (!data) return
-      setForm(f => ({
-        ...f,
-        org_cnpj: formatCnpj(nums),
-        org_name: data.razao_social || f.org_name,
-      }))
-      toast.success('Dados da empresa preenchidos!')
-    } catch {
-      toast.error('Erro ao consultar CNPJ')
-    } finally {
-      setBuscandoCnpj(false)
-    }
-  }
-
-  function handleCnpjChange(value: string) {
-    const nums = onlyDigits(value).slice(0, 14)
-    const masked = formatCnpj(nums)
-    update('org_cnpj', masked)
-    if (nums.length === 14) buscarCnpj(masked)
-  }
-
   // Qual tipo de registro o papel atual exige
   const roleInfo = ROLES.find(r => r.value === role)
   const precisaMTE  = roleInfo?.registro === 'mte'
   const precisaCREA = roleInfo?.registro === 'crea'
+  const dbRole = role === 'gestor'
+    ? 'gestor'
+    : role === 'estagiario'
+      ? 'estagiario'
+      : role === 'viewer'
+        ? 'viewer'
+        : 'avaliador'
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -83,47 +61,37 @@ export default function RegisterPage() {
     }
 
     setLoading(true)
-    setErroCadastro('')
     try {
       // 1. Criar usuário no Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
+        options: { data: { full_name: form.full_name } },
       })
       if (authError) throw authError
       if (!authData.user) throw new Error('Usuário não criado')
-      if (!authData.session) {
-        throw new Error('Usuário criado no Auth, mas o Supabase exige confirmação de e-mail antes de criar o perfil no sistema. Confirme o e-mail e faça login para concluir o acesso.')
-      }
 
-      const dbRole: Record<string, string> = {
-        admin: 'gestor',
-        engenheiro: 'avaliador',
-        tecnico: 'avaliador',
-        estagiario: 'estagiario',
-        viewer: 'viewer',
-      }
-
-      // 2. Criar consultoria
+      // 2. Criar consultoria no schema atual
       const { data: consultoria, error: consultoriaError } = await supabase
         .from('consultorias')
         .insert({
           name: form.org_name,
           cnpj: form.org_cnpj || null,
+          email: form.email,
+          responsavel_nome: form.full_name,
+          responsavel_email: form.email,
           plan: 'pro',
           max_avaliadores: 5,
           max_empresas: 30,
           max_obras: 999,
           active: true,
           created_by: authData.user.id,
-          responsavel_nome: form.full_name,
-          responsavel_email: form.email,
         })
-        .select()
+        .select('id')
         .single()
       if (consultoriaError) throw consultoriaError
 
-      // 3. Criar avaliador compatível com o restante do sistema
+      // 3. Criar vínculo do usuário como avaliador/gestor
       const { error: avaliadorError } = await supabase
         .from('avaliadores')
         .insert({
@@ -131,7 +99,7 @@ export default function RegisterPage() {
           consultoria_id: consultoria.id,
           full_name: form.full_name,
           email: form.email,
-          role: dbRole[role] || 'avaliador',
+          role: dbRole,
           tipo_registro: precisaMTE ? 'mte' : precisaCREA ? 'crea' : null,
           registro_mte: precisaMTE ? (form.registro_mte || null) : null,
           crea: precisaCREA ? (form.crea_numero ? `CREA-${creaEstado} ${form.crea_numero}` : null) : null,
@@ -140,16 +108,13 @@ export default function RegisterPage() {
       if (avaliadorError) throw avaliadorError
 
       toast.success('Conta criada! Bem-vindo ao sistema.')
-      router.push('/dashboard')
+      router.push(dbRole === 'gestor' ? '/consultoria' : '/dashboard')
     } catch (err: any) {
       console.error(err)
       if (err.message?.includes('already registered')) {
-        setErroCadastro('Este e-mail já está cadastrado')
         toast.error('Este e-mail já está cadastrado')
       } else {
-        const mensagem = err.message || 'Erro ao criar conta'
-        setErroCadastro(mensagem)
-        toast.error(mensagem)
+        toast.error(err.message || 'Erro ao criar conta')
       }
     } finally {
       setLoading(false)
@@ -161,13 +126,7 @@ export default function RegisterPage() {
 
       {/* Logo */}
       <div className="mb-6 flex flex-col items-center gap-3">
-        <div className="w-14 h-14 bg-[var(--brand)] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/40">
-          <ShieldCheck size={28} color="#E6F1FB" />
-        </div>
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Vistoria NR 18</h1>
-          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Criar sua conta</p>
-        </div>
+        <BrandLogo size="lg" subtitle="Criar sua conta" className="flex-col text-center" />
       </div>
 
       {/* Card */}
@@ -288,16 +247,13 @@ export default function RegisterPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-[var(--text-secondary)]">CNPJ</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={form.org_cnpj}
-                    onChange={e => handleCnpjChange(e.target.value)}
-                    placeholder="00.000.000/0000-00"
-                    className="w-full px-4 py-3 pr-11 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
-                  />
-                  {buscandoCnpj && <Loader2 size={16} className="absolute right-4 top-3.5 animate-spin text-[var(--brand)]" />}
-                </div>
+                <input
+                  type="text"
+                  value={form.org_cnpj}
+                  onChange={e => update('org_cnpj', e.target.value)}
+                  placeholder="00.000.000/0000-00"
+                  className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
+                />
               </div>
             </div>
           </div>
@@ -352,12 +308,6 @@ export default function RegisterPage() {
               'Criar conta'
             )}
           </button>
-
-          {erroCadastro && (
-            <div className="rounded-xl border border-[#A32D2D]/30 bg-[#FCEBEB] px-3 py-2 text-xs leading-relaxed text-[#791F1F]">
-              {erroCadastro}
-            </div>
-          )}
 
         </form>
 

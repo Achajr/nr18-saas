@@ -8,7 +8,6 @@ import {
   ArrowLeft, Plus, Building2, X, Loader2,
   CheckCircle, AlertCircle, Users, FileText, Pencil
 } from 'lucide-react'
-import ConsultoriaLogo from '@/components/ConsultoriaLogo'
 
 interface Consultoria {
   id: string
@@ -18,8 +17,6 @@ interface Consultoria {
   phone: string | null
   responsavel_nome: string | null
   responsavel_email: string | null
-  logo_path: string | null
-  logo_url: string | null
   plan: string
   max_avaliadores: number
   max_empresas: number
@@ -65,9 +62,6 @@ const emptyForm = {
   phone: '',
   responsavel_nome: '',
   responsavel_email: '',
-  access_password: '',
-  logo_path: '',
-  logo_url: '',
   plan: 'pro',
   observacoes: '',
 }
@@ -80,8 +74,6 @@ export default function ConsultoriasPage() {
   const [saving, setSaving] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [logoPreview, setLogoPreview] = useState('')
   const [buscandoCnpj, setBuscandoCnpj] = useState(false)
 
   useEffect(() => { loadConsultorias() }, [])
@@ -97,70 +89,6 @@ export default function ConsultoriasPage() {
 
   function update(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }))
-  }
-
-  function safeFileName(name: string) {
-    return name
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-zA-Z0-9._-]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .toLowerCase()
-  }
-
-  function handleLogoChange(file?: File | null) {
-    if (!file) {
-      setLogoFile(null)
-      setLogoPreview(form.logo_url || '')
-      return
-    }
-    if (!file.type.startsWith('image/')) {
-      toast.error('Selecione um arquivo de imagem')
-      return
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('A logomarca deve ter no máximo 2MB')
-      return
-    }
-    setLogoFile(file)
-    setLogoPreview(URL.createObjectURL(file))
-  }
-
-  async function uploadLogo(consultoriaId: string) {
-    if (!logoFile) return { logo_path: form.logo_path || null, logo_url: form.logo_url || null }
-
-    const fallbackName = 'logo.png'
-    const storagePath = consultoriaId + '/' + Date.now() + '-' + safeFileName(logoFile.name || fallbackName)
-    const { error } = await supabase.storage
-      .from('consultoria-logos')
-      .upload(storagePath, logoFile, { contentType: logoFile.type })
-    if (error) throw error
-
-    const { data } = supabase.storage.from('consultoria-logos').getPublicUrl(storagePath)
-    return { logo_path: storagePath, logo_url: data.publicUrl }
-  }
-
-  async function salvarAcessoGestor(consultoriaId: string) {
-    if (form.access_password && !form.responsavel_email) {
-      throw new Error('Informe o e-mail do responsável para criar ou alterar o acesso')
-    }
-    if (!form.responsavel_email) return
-    if (!editId && !form.access_password) return
-
-    const res = await fetch('/api/local-admin-users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'upsertConsultoriaGestor',
-        consultoriaId,
-        fullName: form.responsavel_nome || form.name,
-        email: form.responsavel_email,
-        password: form.access_password || undefined,
-      }),
-    })
-    const json = await res.json()
-    if (!res.ok || json.error) throw new Error(json.error?.message || 'Erro ao salvar acesso do gestor')
-    if (!json.data?.skipped) toast.success('Acesso do gestor salvo!')
   }
 
   async function buscarCnpj(cnpj: string) {
@@ -198,8 +126,6 @@ export default function ConsultoriasPage() {
   function openNova() {
     setEditId(null)
     setForm(emptyForm)
-    setLogoFile(null)
-    setLogoPreview('')
     setShowModal(true)
   }
 
@@ -212,14 +138,9 @@ export default function ConsultoriasPage() {
       phone: c.phone || '',
       responsavel_nome: c.responsavel_nome || '',
       responsavel_email: c.responsavel_email || '',
-      logo_path: c.logo_path || '',
-      logo_url: c.logo_url || '',
-      access_password: '',
       plan: c.plan,
       observacoes: '',
     })
-    setLogoFile(null)
-    setLogoPreview(c.logo_url || '')
     setShowModal(true)
   }
 
@@ -230,7 +151,6 @@ export default function ConsultoriasPage() {
       const plano = PLANOS.find(p => p.value === form.plan) || PLANOS[1]
 
       if (editId) {
-        const logoData = await uploadLogo(editId)
         const { error } = await supabase
           .from('consultorias')
           .update({
@@ -240,8 +160,6 @@ export default function ConsultoriasPage() {
             phone: form.phone || null,
             responsavel_nome: form.responsavel_nome || null,
             responsavel_email: form.responsavel_email || null,
-            logo_path: logoData.logo_path,
-            logo_url: logoData.logo_url,
             plan: form.plan,
             max_avaliadores: plano.max_avaliadores,
             max_empresas: plano.max_empresas,
@@ -249,11 +167,10 @@ export default function ConsultoriasPage() {
           })
           .eq('id', editId)
         if (error) throw error
-        await salvarAcessoGestor(editId)
         toast.success('Consultoria atualizada!')
       } else {
         const { data: { user } } = await supabase.auth.getUser()
-        const { data: consultoria, error } = await supabase
+        const { error } = await supabase
           .from('consultorias')
           .insert({
             name: form.name,
@@ -269,18 +186,7 @@ export default function ConsultoriasPage() {
             active: true,
             created_by: user?.id,
           })
-          .select()
-          .single()
         if (error) throw error
-        if (consultoria?.id && logoFile) {
-          const logoData = await uploadLogo(consultoria.id)
-          const { error: logoError } = await supabase
-            .from('consultorias')
-            .update(logoData)
-            .eq('id', consultoria.id)
-          if (logoError) throw logoError
-        }
-        await salvarAcessoGestor(consultoria.id)
         toast.success('Consultoria cadastrada!')
       }
       setShowModal(false)
@@ -352,15 +258,11 @@ export default function ConsultoriasPage() {
                 <div className="flex items-start gap-4">
 
                   {/* Avatar */}
-                  {c.logo_url ? (
-                    <ConsultoriaLogo src={c.logo_url} name={c.name} size="md" label="" />
-                  ) : (
-                    <div className="w-12 h-12 bg-[var(--brand)]/20 border border-[var(--brand)]/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <span className="text-base font-bold text-[var(--brand)]">
-                        {c.name.slice(0, 2).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
+                  <div className="w-12 h-12 bg-[var(--brand)]/20 border border-[var(--brand)]/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="text-base font-bold text-[var(--brand)]">
+                      {c.name.slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
@@ -503,28 +405,6 @@ export default function ConsultoriasPage() {
               <div>
                 <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Responsável</p>
                 <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-[var(--text-secondary)]">Logomarca da consultoria</label>
-                    <div className="flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-primary)] p-3">
-                      <div className="h-20 w-32 overflow-hidden rounded-xl border border-[var(--border)] bg-white flex items-center justify-center">
-                        {logoPreview ? (
-                          <img src={logoPreview} alt="Prévia da logomarca" className="h-full w-full object-contain p-2" />
-                        ) : (
-                          <span className="px-3 text-center text-xs text-[var(--text-muted)]">Sem logo</span>
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={e => handleLogoChange(e.target.files?.[0])}
-                          className="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--brand)] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-[var(--brand-hover)]"
-                        />
-                        <p className="mt-2 text-xs text-[var(--text-muted)]">PNG, JPG ou SVG até 2MB. Ela aparecerá no painel e nos relatórios.</p>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-medium text-[var(--text-secondary)]">Nome</label>
                     <input
@@ -544,24 +424,6 @@ export default function ConsultoriasPage() {
                       placeholder="joao@consultoria.com.br"
                       className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                     />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-[var(--text-secondary)]">
-                      {editId ? 'Nova senha de acesso' : 'Senha inicial de acesso'}
-                    </label>
-                    <input
-                      type="password"
-                      value={form.access_password}
-                      onChange={e => update('access_password', e.target.value)}
-                      placeholder={editId ? 'Preencha apenas se quiser alterar' : 'Mínimo 6 caracteres'}
-                      autoComplete="new-password"
-                      className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
-                    />
-                    <p className="text-xs text-[var(--text-muted)]">
-                      {editId
-                        ? 'Ao preencher, a senha do gestor/responsável desta consultoria será atualizada.'
-                        : 'Se preenchida, cria o acesso de gestor para o responsável da consultoria.'}
-                    </p>
                   </div>
                 </div>
               </div>

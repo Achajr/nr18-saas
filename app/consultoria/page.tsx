@@ -9,6 +9,7 @@ import {
   ChevronRight, TrendingUp, AlertCircle, CheckCircle2,
   Clock, XCircle, HardHat, BarChart3, AlertTriangle
 } from 'lucide-react'
+import BrandLogo from '@/components/BrandLogo'
 
 interface Stats {
   total_avaliadores: number
@@ -66,6 +67,7 @@ function IndiceBar({ value }: { value: number }) {
 export default function ConsultoriaPage() {
   const router = useRouter()
   const [consultoria, setConsultoria] = useState<any>(null)
+  const [avaliador, setAvaliador] = useState<any>(null)
   const [stats, setStats] = useState<Stats | null>(null)
   const [ultimasVistorias, setUltimasVistorias] = useState<Vistoria[]>([])
   const [incompletas, setIncompletas] = useState<Vistoria[]>([])
@@ -86,6 +88,7 @@ export default function ConsultoriaPage() {
         .select('*, consultoria:consultorias(*)')
         .eq('id', user.id).single()
       if (!av || av.role !== 'gestor') { router.push('/dashboard'); return }
+      setAvaliador(av)
       setConsultoria(av.consultoria)
 
       const cid = av.consultoria_id
@@ -119,9 +122,9 @@ export default function ConsultoriaPage() {
         .eq('status', 'concluida')
 
       const indiceMedio = vistoriasData && vistoriasData.length > 0
-        ? Math.round(vistoriasData.reduce((s: number, v: any) => s + (v.indice_conformidade || 0), 0) / vistoriasData.length * 100) / 100
+        ? Math.round(vistoriasData.reduce((s, v) => s + (v.indice_conformidade || 0), 0) / vistoriasData.length * 100) / 100
         : 0
-      const totalNcs = vistoriasData?.reduce((s: number, v: any) => s + (v.total_nao_conformes || 0), 0) || 0
+      const totalNcs = vistoriasData?.reduce((s, v) => s + (v.total_nao_conformes || 0), 0) || 0
 
       setStats({
         total_avaliadores: totalAv || 0,
@@ -195,8 +198,8 @@ export default function ConsultoriaPage() {
             .eq('avaliador_id', av.id)
             .eq('status', 'concluida')
           const totalV = avVist?.length || 0
-          const meV = avVist?.filter((v: any) => v.created_at >= inicioMes).length || 0
-          const indV = totalV > 0 ? Math.round(avVist!.reduce((s: number, v: any) => s + (v.indice_conformidade || 0), 0) / totalV * 100) / 100 : 0
+          const meV = avVist?.filter(v => v.created_at >= inicioMes).length || 0
+          const indV = totalV > 0 ? Math.round(avVist!.reduce((s, v) => s + (v.indice_conformidade || 0), 0) / totalV * 100) / 100 : 0
           avStatsArr.push({ id: av.id, full_name: av.full_name, total_vistorias: totalV, vistorias_mes: meV, indice_medio: indV })
         }
         setAvaliadorStats(avStatsArr.sort((a, b) => b.total_vistorias - a.total_vistorias))
@@ -217,7 +220,7 @@ export default function ConsultoriaPage() {
           .gte('data_vistoria', inicio.split('T')[0])
           .lte('data_vistoria', fim.split('T')[0])
         const total = mv?.length || 0
-        const indice = total > 0 ? Math.round(mv!.reduce((s: number, v: any) => s + (v.indice_conformidade || 0), 0) / total * 100) / 100 : 0
+        const indice = total > 0 ? Math.round(mv!.reduce((s, v) => s + (v.indice_conformidade || 0), 0) / total * 100) / 100 : 0
         meses.push({ mes: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }), total, indice_medio: indice })
       }
       setEvolucaoMensal(meses)
@@ -248,15 +251,7 @@ export default function ConsultoriaPage() {
       <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg-surface)]/90 px-4 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            {consultoria?.logo_url && (
-              <div className="hidden h-11 w-16 shrink-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-white p-1.5 shadow-sm sm:block">
-                <img src={consultoria.logo_url} alt={'Logomarca ' + (consultoria?.name || 'da consultoria')} className="h-full w-full object-contain" />
-              </div>
-            )}
-            <div className="min-w-0 leading-tight">
-              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--brand)]">Dashboard da consultoria</div>
-              <h1 className="truncate text-lg font-black text-[var(--text-primary)] sm:text-xl">{consultoria?.name || 'Painel da consultoria'}</h1>
-            </div>
+            <BrandLogo size="sm" title="NR18 Check" subtitle={consultoria?.name || 'Painel da consultoria'} />
           </div>
           <div className="flex items-center gap-3">
             <button

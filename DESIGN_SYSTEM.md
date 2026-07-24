@@ -112,10 +112,10 @@ bg-[#16192a] border border-[#2a2d4a] rounded-2xl w-full max-w-lg max-h-[90vh] ov
 
 ## Stack técnica
 - Next.js 14 App Router
-- PostgreSQL próprio via Prisma
+- Supabase (PostgreSQL + Auth + Storage)
 - Tailwind CSS
 - lucide-react (ícones)
-- Auth local com cookie HTTP-only
+- @supabase/ssr (client)
 - react-hot-toast (notificações)
 - BrasilAPI (CNPJ + CEP automático)
 
@@ -131,13 +131,14 @@ bg-[#16192a] border border-[#2a2d4a] rounded-2xl w-full max-w-lg max-h-[90vh] ov
 - empresas_clientes (id, consultoria_id, name, cnpj, cidade, uf, grau_risco, avaliador_responsavel)
 - obras (id, consultoria_id, empresa_cliente_id, avaliador_id, name, etapa, status)
 - vistorias (id, obra_id, consultoria_id, avaliador_id, numero, data_vistoria, status, indice_conformidade, classificacao)
-- vistoria_itens (id, vistoria_id, item_id, bloco_id, status, observacao, item_nr_texto, item_multa, item_etapa, item_tipo_verificacao, item_evidencias, item_aplicabilidade, item_criterio)
+- vistoria_itens (id, vistoria_id, item_id, bloco_id, status, observacao, item_nr_texto, item_multa)
 - vistoria_fotos (id, vistoria_id, vistoria_item_id, storage_path, tipo)
+- planos_acao (id, vistoria_id, titulo, responsavel, prazo, status)
 
 ## Observações importantes
-- Banco próprio sem RLS/Supabase; autorização fica na aplicação
+- RLS desabilitado temporariamente em: avaliadores, empresas_clientes
 - organization_id nas tabelas obras e vistorias é NOT NULL removido (usa consultoria_id)
-- O client compatível em lib/supabase/client.ts chama APIs locais do app
+- Supabase client usa @supabase/ssr createBrowserClient
 - Redirecionamento pós-login usa window.location.href (não router.push) para garantir cookie
 - BrasilAPI endpoint CNPJ: https://brasilapi.com.br/api/cnpj/v1/{cnpj}
 - BrasilAPI endpoint CEP: https://brasilapi.com.br/api/cep/v1/{cep}
@@ -146,7 +147,7 @@ bg-[#16192a] border border-[#2a2d4a] rounded-2xl w-full max-w-lg max-h-[90vh] ov
 
 ### Item do checklist
 - Linha inteira fica VERDE com borda lateral esquerda quando CONFORME
-- Linha inteira fica VERMELHA com borda lateral esquerda quando NÃO CONFORME
+- Linha inteira fica VERMELHA com borda lateral esquerda quando NÃO CONFORME  
 - Linha inteira fica CINZA com borda lateral esquerda quando NÃO APLICÁVEL
 - Botões de status ficam com fundo SÓLIDO colorido quando selecionados
 

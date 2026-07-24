@@ -7,6 +7,7 @@ import {
   TrendingUp, Plus, LogOut, ChevronRight,
   CheckCircle, AlertCircle, UserCog
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import BrandLogo from '@/components/BrandLogo'
 
 interface Stats {
@@ -69,7 +70,7 @@ export default function MasterPage() {
 
       setStats({
         total_consultorias: cons?.length || 0,
-        consultorias_ativas: cons?.filter((c: any) => c.active).length || 0,
+        consultorias_ativas: cons?.filter(c => c.active).length || 0,
         total_avaliadores: totalAval || 0,
         total_obras: totalObras || 0,
         total_vistorias: totalVist || 0,

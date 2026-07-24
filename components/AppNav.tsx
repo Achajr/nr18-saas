@@ -4,10 +4,9 @@ import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Building2, Users, FileText, ClipboardList,
-  Plus, LogOut, ChevronLeft, ChevronRight,
-  BarChart3, Palette
+  Plus, LogOut, ChevronLeft, ChevronRight, BarChart3, Palette,
+  type LucideIcon
 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 import BrandLogo from '@/components/BrandLogo'
 
 type Perfil = 'master' | 'gestor' | 'avaliador' | null
@@ -172,7 +171,7 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
           <BrandLogo
             size="sm"
             markOnly={collapsed}
-            subtitle={consultoriaName || 'Vistorias e conformidade'}
+            subtitle={consultoriaName || ''}
           />
         </div>
 
@@ -254,7 +253,7 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
       {/* ── BOTTOM NAV (mobile) ── */}
       <nav className="bottom-nav">
         <div className="bottom-nav-items">
-          {bottomItems.map(item => {
+          {bottomItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/')
             const isNew = item.label === 'Nova' || item.label === 'Nova vistoria'
             if (isNew) {

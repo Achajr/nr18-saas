@@ -31,6 +31,14 @@ interface Avaliador {
 
 const ESTADOS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
 
+const ROLES = [
+  { value: 'gestor',     label: 'Gestor da consultoria',              registro: null   },
+  { value: 'avaliador',  label: 'Técnico de Segurança do Trabalho',   registro: 'mte'  },
+  { value: 'avaliador',  label: 'Engenheiro de Segurança do Trabalho', registro: 'crea' },
+  { value: 'estagiario', label: 'Estagiário de Segurança do Trabalho', registro: null  },
+  { value: 'viewer',     label: 'Somente visualização',               registro: null   },
+]
+
 // Sem duplicatas no select
 const ROLES_UNICOS = [
   { value: 'gestor',     label: 'Gestor da consultoria',               tipo: null    },
