@@ -65,6 +65,7 @@ const emptyForm = {
   phone: '',
   responsavel_nome: '',
   responsavel_email: '',
+  access_password: '',
   logo_path: '',
   logo_url: '',
   plan: 'pro',
@@ -139,6 +140,25 @@ export default function ConsultoriasPage() {
     return { logo_path: storagePath, logo_url: data.publicUrl }
   }
 
+  async function salvarAcessoGestor(consultoriaId: string) {
+    if (!form.responsavel_email) return
+    if (!editId && !form.access_password) return
+
+    const res = await fetch('/api/local-admin-users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'upsertConsultoriaGestor',
+        consultoriaId,
+        fullName: form.responsavel_nome || form.name,
+        email: form.responsavel_email,
+        password: form.access_password || undefined,
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok || json.error) throw new Error(json.error?.message || 'Erro ao salvar acesso do gestor')
+  }
+
   async function buscarCnpj(cnpj: string) {
     const numeros = onlyDigits(cnpj)
     if (numeros.length !== 14) return
@@ -190,6 +210,7 @@ export default function ConsultoriasPage() {
       responsavel_email: c.responsavel_email || '',
       logo_path: c.logo_path || '',
       logo_url: c.logo_url || '',
+      access_password: '',
       plan: c.plan,
       observacoes: '',
     })
@@ -224,6 +245,7 @@ export default function ConsultoriasPage() {
           })
           .eq('id', editId)
         if (error) throw error
+        await salvarAcessoGestor(editId)
         toast.success('Consultoria atualizada!')
       } else {
         const { data: { user } } = await supabase.auth.getUser()
@@ -254,6 +276,7 @@ export default function ConsultoriasPage() {
             .eq('id', consultoria.id)
           if (logoError) throw logoError
         }
+        await salvarAcessoGestor(consultoria.id)
         toast.success('Consultoria cadastrada!')
       }
       setShowModal(false)
@@ -517,6 +540,24 @@ export default function ConsultoriasPage() {
                       placeholder="joao@consultoria.com.br"
                       className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                     />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">
+                      {editId ? 'Nova senha de acesso' : 'Senha inicial de acesso'}
+                    </label>
+                    <input
+                      type="password"
+                      value={form.access_password}
+                      onChange={e => update('access_password', e.target.value)}
+                      placeholder={editId ? 'Preencha apenas se quiser alterar' : 'Mínimo 6 caracteres'}
+                      autoComplete="new-password"
+                      className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
+                    />
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {editId
+                        ? 'Ao preencher, a senha do gestor/responsável desta consultoria será atualizada.'
+                        : 'Se preenchida, cria o acesso de gestor para o responsável da consultoria.'}
+                    </p>
                   </div>
                 </div>
               </div>
