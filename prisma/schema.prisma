@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AuthUser {
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique
+  passwordHash String?     @map("password_hash")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @default(now()) @updatedAt @map("updated_at")
+  avaliador    Avaliador?
+
+  @@map("auth_users")
+}
+
+model MasterAdmin {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("master_admins")
+}
+
+model Consultoria {
+  id        String   @id @default(uuid()) @db.Uuid
+  nome      String
+  logoUrl   String?  @map("logo_url")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  avaliadores      Avaliador[]
+  empresasClientes EmpresaCliente[]
+  obras            Obra[]
+  vistorias        Vistoria[]
+
+  @@map("consultorias")
+}
+
+model Avaliador {
+  id            String      @id @db.Uuid
+  consultoriaId String      @map("consultoria_id") @db.Uuid
+  email         String
+  fullName      String      @map("full_name")
+  role          String      @default("avaliador")
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  authUser      AuthUser    @relation(fields: [id], references: [id], onDelete: Cascade)
+  consultoria   Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
+  vistorias     Vistoria[]
+
+  @@map("avaliadores")
+}
+
+model EmpresaCliente {
+  id            String      @id @default(uuid()) @db.Uuid
+  consultoriaId String      @map("consultoria_id") @db.Uuid
+  razaoSocial   String      @map("razao_social")
+  nomeFantasia  String?     @map("nome_fantasia")
+  cnpj          String?
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  consultoria   Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
+  obras         Obra[]
+
+  @@map("empresas_clientes")
+}
+
+model Obra {
+  id               String           @id @default(uuid()) @db.Uuid
+  consultoriaId    String           @map("consultoria_id") @db.Uuid
+  empresaClienteId String           @map("empresa_cliente_id") @db.Uuid
+  nome             String
+  endereco         String?
+  status           String           @default("ativa")
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  consultoria      Consultoria      @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
+  empresaCliente   EmpresaCliente   @relation(fields: [empresaClienteId], references: [id], onDelete: Cascade)
+  empreiteiras     ObraEmpreiteira[]
+  vistorias        Vistoria[]
+
+  @@map("obras")
+}
+
+model ObraEmpreiteira {
+  id        String   @id @default(uuid()) @db.Uuid
+  obraId    String   @map("obra_id") @db.Uuid
+  nome      String
+  cnpj      String?
+  ativa     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  obra      Obra     @relation(fields: [obraId], references: [id], onDelete: Cascade)
+
+  @@map("obra_empreiteiras")
+}
+
+model Vistoria {
+  id             String    @id @default(uuid()) @db.Uuid
+  consultoriaId  String    @map("consultoria_id") @db.Uuid
+  obraId         String    @map("obra_id") @db.Uuid
+  avaliadorId    String    @map("avaliador_id") @db.Uuid
+  numero         Int       @default(autoincrement())
+  status         String    @default("em_andamento")
+  parecerIa      String?   @map("parecer_ia")
+  parecerEditado  String?   @map("parecer_editado")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  consultoria    Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
+  obra           Obra        @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  avaliador      Avaliador   @relation(fields: [avaliadorId], references: [id], onDelete: Cascade)
+
+  itens          VistoriaItem[]
+  fotos          VistoriaFoto[]
+  vinculos       VistoriaItemEmpresa[]
+
+  @@map("vistorias")
+}
+
+model VistoriaItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  vistoriaId  String   @map("vistoria_id") @db.Uuid
+  itemId      String   @map("item_id")
+  blocoId     String   @map("bloco_id")
+  status      String   @default("C")
+  observacao  String?
+  itemTexto   String?  @map("item_texto")
+  itemRef     String?  @map("item_ref")
+  itemNivel   String?  @map("item_nivel")
+  itemMulta   String?  @map("item_multa")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  vistoria    Vistoria @relation(fields: [vistoriaId], references: [id], onDelete: Cascade)
+
+  @@map("vistoria_itens")
+}
+
+model VistoriaFoto {
+  id             String   @id @default(uuid()) @db.Uuid
+  vistoriaId     String   @map("vistoria_id") @db.Uuid
+  itemId         String   @map("item_id")
+  vistoriaItemId String?  @map("vistoria_item_id") @db.Uuid
+  storagePath    String   @map("storage_path")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  vistoria       Vistoria @relation(fields: [vistoriaId], references: [id], onDelete: Cascade)
+
+  @@map("vistoria_fotos")
+}
+
+model VistoriaItemEmpresa {
+  id         String   @id @default(uuid()) @db.Uuid
+  vistoriaId String   @map("vistoria_id") @db.Uuid
+  itemId     String   @map("item_id")
+  empresa    String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  vistoria   Vistoria @relation(fields: [vistoriaId], references: [id], onDelete: Cascade)
+
+  @@map("vistoria_item_empresas")
+}
