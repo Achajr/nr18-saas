@@ -9,8 +9,6 @@ import {
   ChevronRight, TrendingUp, AlertCircle, CheckCircle2,
   Clock, XCircle, HardHat, BarChart3, AlertTriangle
 } from 'lucide-react'
-import BrandLogo from '@/components/BrandLogo'
-import ConsultoriaLogo from '@/components/ConsultoriaLogo'
 
 interface Stats {
   total_avaliadores: number
@@ -250,8 +248,15 @@ export default function ConsultoriaPage() {
       <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg-surface)]/90 px-4 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <BrandLogo size="sm" title="NR18 Check" subtitle={consultoria?.name || 'Painel da consultoria'} />
-            <ConsultoriaLogo src={consultoria?.logo_url} name={consultoria?.name} size="sm" label="Consultoria" />
+            {consultoria?.logo_url && (
+              <div className="hidden h-11 w-16 shrink-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-white p-1.5 shadow-sm sm:block">
+                <img src={consultoria.logo_url} alt={'Logomarca ' + (consultoria?.name || 'da consultoria')} className="h-full w-full object-contain" />
+              </div>
+            )}
+            <div className="min-w-0 leading-tight">
+              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--brand)]">Dashboard da consultoria</div>
+              <h1 className="truncate text-lg font-black text-[var(--text-primary)] sm:text-xl">{consultoria?.name || 'Painel da consultoria'}</h1>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <button
