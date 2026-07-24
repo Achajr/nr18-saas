@@ -4,10 +4,22 @@ import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
+  const path = req.nextUrl.pathname
+
+  // Rotas públicas não precisam inicializar o Supabase. Isso evita erro em
+  // ambiente local antes de configurar NEXT_PUBLIC_SUPABASE_URL/ANON_KEY.
+  if (path.startsWith('/auth')) return res
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.redirect(new URL('/auth/login', req.url))
+  }
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) { return req.cookies.get(name)?.value },
@@ -22,10 +34,6 @@ export async function middleware(req: NextRequest) {
   )
 
   const { data: { session } } = await supabase.auth.getSession()
-  const path = req.nextUrl.pathname
-
-  // Rotas públicas
-  if (path.startsWith('/auth')) return res
 
   // Sem sessão — manda para login
   if (!session) {
