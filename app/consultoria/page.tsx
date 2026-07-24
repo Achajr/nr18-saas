@@ -10,6 +10,7 @@ import {
   Clock, XCircle, HardHat, BarChart3, AlertTriangle
 } from 'lucide-react'
 import BrandLogo from '@/components/BrandLogo'
+import ConsultoriaLogo from '@/components/ConsultoriaLogo'
 
 interface Stats {
   total_avaliadores: number
@@ -250,6 +251,7 @@ export default function ConsultoriaPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <BrandLogo size="sm" title="NR18 Check" subtitle={consultoria?.name || 'Painel da consultoria'} />
+            <ConsultoriaLogo src={consultoria?.logo_url} name={consultoria?.name} size="sm" label="Consultoria" />
           </div>
           <div className="flex items-center gap-3">
             <button

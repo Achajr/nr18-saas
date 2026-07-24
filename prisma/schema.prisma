@@ -32,6 +32,8 @@ model consultorias {
   phone              String?
   responsavel_nome   String?
   responsavel_email  String?
+  logo_path          String?
+  logo_url           String?
   plan               String   @default("pro")
   max_avaliadores    Int      @default(5)
   max_empresas       Int      @default(30)

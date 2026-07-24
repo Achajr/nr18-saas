@@ -16,6 +16,7 @@ import {
 } from '@/lib/checklist-data'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Download, XCircle, HardHat, CloudSun, Loader2, Sparkles, Building2, ChevronDown } from 'lucide-react'
+import ConsultoriaLogo from '@/components/ConsultoriaLogo'
 
 // ─── CALCULO DE MULTAS NR-28 ─────────────────────────────────────────────────
 function calcularMulta(grau: string, numFuncionarios: number): number {
@@ -134,7 +135,7 @@ interface VistoriaCompleta {
   total_nao_conformes: number; total_na: number; indice_conformidade: number; classificacao: string
   parecer_ia: string | null; parecer_editado: string | null
   obra: { id: string; name: string; num_funcionarios: number; empresa_cliente: { name: string; cnpj: string | null; cidade: string | null; uf: string | null } | null } | null
-  avaliador: { full_name: string; registro_mte: string | null; crea: string | null; consultoria: { name: string; cnpj: string | null } | null } | null
+  avaliador: { full_name: string; registro_mte: string | null; crea: string | null; consultoria: { name: string; cnpj: string | null; logo_url?: string | null } | null } | null
 }
 interface ItemVistoria {
   id: string; item_id: string; bloco_id: string; status: string; observacao: string | null
@@ -196,7 +197,7 @@ export default function RelatorioPage() {
     try {
       const { data: v } = await supabase
         .from('vistorias')
-        .select('*, obra:obras(id, name, num_funcionarios, empresa_cliente:empresas_clientes(name, cnpj, cidade, uf)), avaliador:avaliadores(full_name, registro_mte, crea, consultoria:consultorias(name, cnpj))')
+        .select('*, obra:obras(id, name, num_funcionarios, empresa_cliente:empresas_clientes(name, cnpj, cidade, uf)), avaliador:avaliadores(full_name, registro_mte, crea, consultoria:consultorias(name, cnpj, logo_url))')
         .eq('id', vistoriaId).single()
       if (!v) { toast.error('Vistoria não encontrada'); return }
       setVistoria(v as any)
@@ -422,6 +423,23 @@ export default function RelatorioPage() {
 
           {/* 1. CABECALHO */}
           <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-32 overflow-hidden rounded-2xl border border-[var(--border)] bg-white shadow-sm">
+                  <img src="/branding/login-logo-login.png" alt="NR18 Check" className="h-full w-full object-contain p-2" />
+                </div>
+                <ConsultoriaLogo
+                  src={vistoria.avaliador?.consultoria?.logo_url}
+                  name={vistoria.avaliador?.consultoria?.name}
+                  size="md"
+                  label="Consultoria responsável"
+                />
+              </div>
+              <div className="text-right">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Documento técnico</div>
+                <div className="text-sm font-bold text-[var(--text-primary)]">Relatório NR-18</div>
+              </div>
+            </div>
             <div className="flex items-start justify-between gap-4 mb-5">
               <div>
                 <div className="flex items-center gap-2 mb-1"><HardHat size={16} className="text-[var(--brand)]" /><span className="text-xs text-[var(--text-muted)] uppercase tracking-wider">Relatório Técnico de Vistoria</span></div>

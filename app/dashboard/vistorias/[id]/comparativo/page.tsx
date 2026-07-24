@@ -50,6 +50,7 @@ interface VistoriaResumo {
   clima?: string | null
   etapa_obra?: string | null
   obra?: { name: string; empresa_cliente?: { name: string } | null } | null
+  consultoria?: { name: string; logo_url?: string | null } | null
 }
 
 interface ItemRow {
@@ -471,6 +472,12 @@ export default function ComparativoPage() {
       const autoTable = (autoTableModule.default || autoTableModule.autoTable) as any
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
       const logoData = await imageToDataUrl('/branding/login-logo-login.png')
+      const { data: consultoriaPdf } = await supabase
+        .from('consultorias')
+        .select('name, logo_url')
+        .eq('id', atual.consultoria_id)
+        .single()
+      const consultoriaLogoData = consultoriaPdf?.logo_url ? await imageToDataUrl(consultoriaPdf.logo_url) : null
       const margin = 14
       const pageW = doc.internal.pageSize.getWidth()
       const pageH = doc.internal.pageSize.getHeight()
@@ -531,6 +538,12 @@ export default function ComparativoPage() {
         doc.rect(0, 0, w, 35, 'F')
         if (logoData) {
           try { doc.addImage(logoData, 'PNG', margin, 7, 38, 17) } catch {}
+        }
+        if (consultoriaLogoData) {
+          try {
+            const type = consultoriaLogoData.startsWith('data:image/jpeg') || consultoriaLogoData.startsWith('data:image/jpg') ? 'JPEG' : 'PNG'
+            doc.addImage(consultoriaLogoData, type, margin + 43, 7, 24, 17)
+          } catch {}
         }
         text(title, w - margin - 68, 14, 9.5, PDF.brandDark, 'bold')
         text(`Histórico consolidado: ${inspecoesHistoricas.length} inspeções analisadas`, w - margin - 86, 20, 6.8, PDF.muted)

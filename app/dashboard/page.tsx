@@ -8,6 +8,7 @@ import {
   AlertCircle, TrendingUp
 } from 'lucide-react'
 import BrandLogo from '@/components/BrandLogo'
+import ConsultoriaLogo from '@/components/ConsultoriaLogo'
 
 interface Avaliador {
   id: string
@@ -16,7 +17,7 @@ interface Avaliador {
   registro_mte: string | null
   crea: string | null
   consultoria_id: string
-  consultoria: { name: string }
+  consultoria: { name: string; logo_url?: string | null }
 }
 
 interface Stats {
@@ -144,6 +145,7 @@ export default function DashboardPage() {
       <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-4 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <BrandLogo size="sm" title="NR18 Check" subtitle={avaliador?.consultoria?.name || 'Painel do avaliador'} />
+          <ConsultoriaLogo src={avaliador?.consultoria?.logo_url} name={avaliador?.consultoria?.name} size="sm" label="Consultoria" />
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right hidden sm:block">

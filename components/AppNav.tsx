@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import BrandLogo from '@/components/BrandLogo'
+import ConsultoriaLogo from '@/components/ConsultoriaLogo'
 
 type Perfil = 'master' | 'gestor' | 'avaliador' | null
 
@@ -144,6 +145,7 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
 
   const initials = user?.full_name?.split(' ').slice(0,2).map((n: string) => n[0]).join('').toUpperCase() || '??'
   const consultoriaName = user?.consultoria?.name || (perfil === 'master' ? 'Master Admin' : '')
+  const consultoriaLogo = user?.consultoria?.logo_url || null
 
   if (isPublic) return <>{children}</>
 
@@ -174,6 +176,9 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
             markOnly={collapsed}
             subtitle={consultoriaName || 'Vistorias e conformidade'}
           />
+          {!collapsed && consultoriaLogo && (
+            <ConsultoriaLogo src={consultoriaLogo} name={consultoriaName} size="sm" label="Consultoria" />
+          )}
         </div>
 
         {/* Nav */}
