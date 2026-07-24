@@ -141,6 +141,9 @@ export default function ConsultoriasPage() {
   }
 
   async function salvarAcessoGestor(consultoriaId: string) {
+    if (form.access_password && !form.responsavel_email) {
+      throw new Error('Informe o e-mail do responsável para criar ou alterar o acesso')
+    }
     if (!form.responsavel_email) return
     if (!editId && !form.access_password) return
 
@@ -157,6 +160,7 @@ export default function ConsultoriasPage() {
     })
     const json = await res.json()
     if (!res.ok || json.error) throw new Error(json.error?.message || 'Erro ao salvar acesso do gestor')
+    if (!json.data?.skipped) toast.success('Acesso do gestor salvo!')
   }
 
   async function buscarCnpj(cnpj: string) {

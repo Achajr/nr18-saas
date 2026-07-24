@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     const password = String(body.password || '')
 
     if (!consultoriaId) return json({ error: { message: 'Consultoria inválida' } }, 400)
+    if (password && !email) return json({ error: { message: 'Informe o e-mail do responsável para criar ou alterar o acesso' } }, 400)
     if (!email) return json({ data: { skipped: true }, error: null })
 
     const existingGestor = await prisma.avaliadores.findFirst({
