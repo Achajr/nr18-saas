@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import {
-  ShieldCheck, Building2, FileText, Plus,
+  Building2, FileText, Plus,
   LogOut, ChevronRight, Clock,
   AlertCircle, TrendingUp
 } from 'lucide-react'
+import BrandLogo from '@/components/BrandLogo'
 
 interface Avaliador {
   id: string
@@ -142,15 +143,7 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-4 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[var(--brand)] rounded-xl flex items-center justify-center flex-shrink-0">
-            <ShieldCheck size={20} color="#E6F1FB" />
-          </div>
-          <div>
-            <h1 className="text-sm font-bold text-[var(--text-primary)]">Vistoria NR 18</h1>
-            <p className="text-xs text-[var(--text-muted)] truncate max-w-[160px]">
-              {avaliador?.consultoria?.name}
-            </p>
-          </div>
+          <BrandLogo size="sm" title="NR18 Check" subtitle={avaliador?.consultoria?.name || 'Painel do avaliador'} />
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right hidden sm:block">
