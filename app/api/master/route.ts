@@ -41,7 +41,7 @@ export async function GET(req: Request) {
 
     const formattedConsultorias = consultorias.map(c => ({
       id: c.id,
-      name: c.nome,
+      name: c.name,
       cnpj: null,
       plan: 'pro',
       active: c.active,
@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     }))
 
     return NextResponse.json({
-      masterName: user.email.split('@')[0],
+      masterName: master.fullName || user.email.split('@')[0],
       stats: {
         total_consultorias: consultorias.length,
         consultorias_ativas: consultorias.filter(c => c.active).length,

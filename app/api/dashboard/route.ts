@@ -72,7 +72,7 @@ export async function GET(req: Request) {
         registro_mte: null,
         crea: null,
         consultoria_id: avaliador.consultoriaId,
-        consultoria: { name: avaliador.consultoria.nome }
+        consultoria: { name: avaliador.consultoria.name }
       },
       stats: {
         total_empresas: totalEmpresas,
