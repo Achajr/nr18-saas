@@ -60,11 +60,11 @@ export async function POST(req: Request) {
       })
 
       response.cookies.set('auth_user_id', user.id, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        httpOnly: false,
+        secure: false,
         sameSite: 'lax',
         path: '/',
-        maxAge: 60 * 60 * 24 * 30 // 30 dias
+        maxAge: 60 * 60 * 24 * 30
       })
 
       return response
