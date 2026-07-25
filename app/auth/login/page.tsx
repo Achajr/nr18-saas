@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import {
   ArrowRight,
@@ -30,54 +29,38 @@ export default function LoginPage() {
     }
     setLoading(true)
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        if (error.message.includes('Invalid login')) {
-          toast.error('E-mail ou senha incorretos')
-        } else {
-          toast.error(error.message)
-        }
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', email, password })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || data.error) {
+        toast.error(data.error || 'E-mail ou senha incorretos')
         return
       }
 
-      const userId = data.user.id
-
-      // 1. Verifica se é master admin
-      const { data: master } = await supabase
-        .from('master_admins')
-        .select('id')
-        .eq('id', userId)
-        .single()
-
-      if (master) {
+      if (data.master) {
         toast.success('Bem-vindo, Master!')
         window.location.href = '/master'
         return
       }
 
-      // 2. Verifica se é avaliador/gestor
-      const { data: avaliador } = await supabase
-        .from('avaliadores')
-        .select('role')
-        .eq('id', userId)
-        .single()
-
-      if (avaliador?.role === 'gestor') {
+      if (data.avaliador?.role === 'gestor') {
         toast.success('Bem-vindo!')
         window.location.href = '/consultoria'
         return
       }
 
-      if (avaliador) {
+      if (data.avaliador) {
         toast.success('Bem-vindo!')
         window.location.href = '/dashboard'
         return
       }
 
-      // Fallback
       toast.error('Usuário não encontrado. Contate o administrador.')
-      await supabase.auth.signOut()
-
     } catch (err) {
       console.error('ERRO:', err)
       toast.error('Erro ao conectar. Tente novamente.')
@@ -173,51 +156,50 @@ export default function LoginPage() {
               <form onSubmit={handleLogin} className="flex flex-col gap-5">
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-bold text-[var(--text-secondary)]">E-mail</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="seu@email.com"
-              autoComplete="email"
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    autoComplete="email"
                     className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-primary)] px-4 py-4 text-base text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
-            />
-          </div>
+                  />
+                </div>
 
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-bold text-[var(--text-secondary)]">Senha</label>
-            <div className="relative">
-              <input
-                type={showPass ? 'text' : 'password'}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                autoComplete="current-password"
+                  <div className="relative">
+                    <input
+                      type={showPass ? 'text' : 'password'}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="current-password"
                       className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-primary)] px-4 py-4 pr-12 text-base text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass(!showPass)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(!showPass)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
                       aria-label={showPass ? 'Ocultar senha' : 'Mostrar senha'}
-              >
+                    >
                       {showPass ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-          </div>
+                    </button>
+                  </div>
+                </div>
 
-          <button
-            type="submit"
-            disabled={loading}
+                <button
+                  type="submit"
+                  disabled={loading}
                   className="mt-2 flex w-full items-center justify-center gap-3 rounded-2xl bg-[var(--brand)] px-5 py-4 text-base font-black text-white shadow-lg shadow-[var(--brand-muted)] transition hover:bg-[var(--brand-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? (
-              <><Loader2 size={18} className="animate-spin" /> Entrando...</>
+                >
+                  {loading ? (
+                    <><Loader2 size={18} className="animate-spin" /> Entrando...</>
                   ) : (
                     <>Entrar no sistema <ArrowRight size={19} /></>
                   )}
-          </button>
-
-        </form>
+                </button>
+              </form>
 
               <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-primary)] p-4">
                 <div className="flex items-start gap-3">
