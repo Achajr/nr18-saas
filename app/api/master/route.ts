@@ -3,8 +3,13 @@ import { prisma } from '@/lib/db/prisma'
 
 export async function GET(req: Request) {
   try {
-    const cookieHeader = req.headers.get('cookie') || ''
-    const userIdCookie = cookieHeader.split('; ').find(row => row.startsWith('auth_user_id='))?.split('=')[1]
+    const { searchParams } = new URL(req.url)
+    let userIdCookie = searchParams.get('userId')
+
+    if (!userIdCookie) {
+      const cookieHeader = req.headers.get('cookie') || ''
+      userIdCookie = cookieHeader.split('; ').find(row => row.startsWith('auth_user_id='))?.split('=')[1] || null
+    }
 
     if (!userIdCookie) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
