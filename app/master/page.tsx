@@ -1,13 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import {
   Building2, Users, FileText,
   TrendingUp, Plus, LogOut, ChevronRight,
   CheckCircle, AlertCircle, UserCog
 } from 'lucide-react'
-import toast from 'react-hot-toast'
 import BrandLogo from '@/components/BrandLogo'
 
 interface Stats {
@@ -40,41 +38,20 @@ export default function MasterPage() {
 
   async function loadData() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
+      const res = await fetch('/api/master')
+      if (!res.ok) {
+        router.push('/auth/login')
+        return
+      }
+      const data = await res.json()
+      if (data.error) {
+        router.push('/auth/login')
+        return
+      }
 
-      const { data: master } = await supabase
-        .from('master_admins')
-        .select('full_name')
-        .eq('id', user.id)
-        .single()
-      if (master) setMasterName(master.full_name)
-
-      const { data: cons } = await supabase
-        .from('consultorias')
-        .select('*')
-        .order('created_at', { ascending: false })
-      setConsultorias(cons || [])
-
-      const { count: totalAval } = await supabase
-        .from('avaliadores')
-        .select('*', { count: 'exact', head: true })
-
-      const { count: totalObras } = await supabase
-        .from('obras')
-        .select('*', { count: 'exact', head: true })
-
-      const { count: totalVist } = await supabase
-        .from('vistorias')
-        .select('*', { count: 'exact', head: true })
-
-      setStats({
-        total_consultorias: cons?.length || 0,
-        consultorias_ativas: cons?.filter(c => c.active).length || 0,
-        total_avaliadores: totalAval || 0,
-        total_obras: totalObras || 0,
-        total_vistorias: totalVist || 0,
-      })
+      setMasterName(data.masterName || 'Master Admin')
+      setStats(data.stats)
+      setConsultorias(data.consultorias || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -83,7 +60,11 @@ export default function MasterPage() {
   }
 
   async function handleLogout() {
-    await supabase.auth.signOut()
+    await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'logout' })
+    })
     router.push('/auth/login')
   }
 
@@ -106,8 +87,6 @@ export default function MasterPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
-
-      {/* Header */}
       <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <BrandLogo size="sm" subtitle="Painel Master" />
@@ -128,8 +107,6 @@ export default function MasterPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-
-        {/* Boas-vindas */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">
             Olá, {masterName.split(' ')[0]} 👋
@@ -139,7 +116,6 @@ export default function MasterPage() {
           </p>
         </div>
 
-        {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
             {[
@@ -158,7 +134,6 @@ export default function MasterPage() {
           </div>
         )}
 
-        {/* Atalhos de navegação */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
           <button
             onClick={() => router.push('/master/consultorias')}
@@ -193,7 +168,6 @@ export default function MasterPage() {
           </button>
         </div>
 
-        {/* Lista de consultorias */}
         <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between">
             <h3 className="font-semibold text-[var(--text-primary)]">Consultorias cadastradas</h3>
@@ -260,7 +234,6 @@ export default function MasterPage() {
             </div>
           )}
         </div>
-
       </main>
     </div>
   )
