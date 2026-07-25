@@ -5,6 +5,7 @@ import Image from 'next/image'
 type BrandLogoProps = {
   title?: string
   subtitle?: string
+  consultoriaLogoUrl?: string | null
   size?: 'sm' | 'md' | 'lg' | 'xl'
   inverted?: boolean
   markOnly?: boolean
@@ -21,6 +22,7 @@ const sizes = {
 export default function BrandLogo({
   title = 'NR18 Check',
   subtitle = '',
+  consultoriaLogoUrl = null,
   size = 'md',
   inverted = false,
   markOnly = false,
@@ -35,6 +37,7 @@ export default function BrandLogo({
 
   return (
     <div className={`flex min-w-0 items-center gap-3 ${className}`}>
+      {/* Logo do NR18 Check */}
       <div
         className={`relative shrink-0 overflow-hidden ${wrapperClass}`}
         style={{ width: markOnly ? cfg.markSize : cfg.logoWidth, aspectRatio: markOnly ? '1 / 1' : '1080 / 500' }}
@@ -50,7 +53,21 @@ export default function BrandLogo({
         />
       </div>
 
-      {!markOnly && subtitle && (
+      {/* Logo da Consultoria (se existir) */}
+      {consultoriaLogoUrl && (
+        <div className="flex items-center gap-2 border-l border-[var(--border)] pl-3">
+          <div className="relative h-10 w-28 shrink-0 overflow-hidden rounded-xl border border-[var(--border)] bg-white p-1">
+            <Image
+              src={consultoriaLogoUrl}
+              alt="Logo Consultoria"
+              fill
+              className="object-contain"
+            />
+          </div>
+        </div>
+      )}
+
+      {!markOnly && subtitle && !consultoriaLogoUrl && (
         <div className="min-w-0 leading-tight">
           <div className={`truncate font-semibold ${subtitleTone} ${cfg.subtitle}`}>{subtitle}</div>
         </div>

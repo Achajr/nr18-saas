@@ -1,17 +1,18 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import { fetchCnpjInfo, formatCnpj, formatPhone, getResponsavelFromQsa, onlyDigits } from '@/lib/cnpj'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Plus, Building2, X, Loader2,
-  CheckCircle, AlertCircle, Users, FileText, Pencil
+  CheckCircle, AlertCircle, Users, FileText, Pencil, Image as ImageIcon
 } from 'lucide-react'
+import Image from 'next/image'
 
 interface Consultoria {
   id: string
   name: string
+  logo_url: string | null
   cnpj: string | null
   email: string | null
   phone: string | null
@@ -57,6 +58,7 @@ const PLANOS = [
 
 const emptyForm = {
   name: '',
+  logo_url: '',
   cnpj: '',
   email: '',
   phone: '',
@@ -79,12 +81,15 @@ export default function ConsultoriasPage() {
   useEffect(() => { loadConsultorias() }, [])
 
   async function loadConsultorias() {
-    const { data } = await supabase
-      .from('consultorias')
-      .select('*')
-      .order('created_at', { ascending: false })
-    setConsultorias(data || [])
-    setLoading(false)
+    try {
+      const res = await fetch('/api/consultorias')
+      const data = await res.json()
+      setConsultorias(data.consultorias || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   function update(field: string, value: string) {
@@ -133,6 +138,7 @@ export default function ConsultoriasPage() {
     setEditId(c.id)
     setForm({
       name: c.name,
+      logo_url: c.logo_url || '',
       cnpj: c.cnpj || '',
       email: c.email || '',
       phone: c.phone || '',
@@ -148,47 +154,20 @@ export default function ConsultoriasPage() {
     if (!form.name) { toast.error('Nome da consultoria é obrigatório'); return }
     setSaving(true)
     try {
-      const plano = PLANOS.find(p => p.value === form.plan) || PLANOS[1]
+      const res = await fetch('/api/consultorias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editId || undefined,
+          name: form.name,
+          logoUrl: form.logo_url || null,
+          active: true
+        })
+      })
 
-      if (editId) {
-        const { error } = await supabase
-          .from('consultorias')
-          .update({
-            name: form.name,
-            cnpj: form.cnpj || null,
-            email: form.email || null,
-            phone: form.phone || null,
-            responsavel_nome: form.responsavel_nome || null,
-            responsavel_email: form.responsavel_email || null,
-            plan: form.plan,
-            max_avaliadores: plano.max_avaliadores,
-            max_empresas: plano.max_empresas,
-            max_obras: plano.max_obras,
-          })
-          .eq('id', editId)
-        if (error) throw error
-        toast.success('Consultoria atualizada!')
-      } else {
-        const { data: { user } } = await supabase.auth.getUser()
-        const { error } = await supabase
-          .from('consultorias')
-          .insert({
-            name: form.name,
-            cnpj: form.cnpj || null,
-            email: form.email || null,
-            phone: form.phone || null,
-            responsavel_nome: form.responsavel_nome || null,
-            responsavel_email: form.responsavel_email || null,
-            plan: form.plan,
-            max_avaliadores: plano.max_avaliadores,
-            max_empresas: plano.max_empresas,
-            max_obras: plano.max_obras,
-            active: true,
-            created_by: user?.id,
-          })
-        if (error) throw error
-        toast.success('Consultoria cadastrada!')
-      }
+      if (!res.ok) throw new Error('Erro ao salvar')
+
+      toast.success(editId ? 'Consultoria atualizada!' : 'Consultoria cadastrada!')
       setShowModal(false)
       loadConsultorias()
     } catch (err: any) {
@@ -199,13 +178,17 @@ export default function ConsultoriasPage() {
   }
 
   async function toggleActive(c: Consultoria) {
-    const { error } = await supabase
-      .from('consultorias')
-      .update({ active: !c.active })
-      .eq('id', c.id)
-    if (error) { toast.error('Erro ao atualizar'); return }
-    toast.success(c.active ? 'Consultoria desativada' : 'Consultoria ativada')
-    loadConsultorias()
+    try {
+      await fetch('/api/consultorias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: c.id, active: !c.active })
+      })
+      toast.success(c.active ? 'Consultoria desativada' : 'Consultoria ativada')
+      loadConsultorias()
+    } catch {
+      toast.error('Erro ao atualizar status')
+    }
   }
 
   const planColors: Record<string, string> = {
@@ -216,8 +199,6 @@ export default function ConsultoriasPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
-
-      {/* Header */}
       <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
         <button onClick={() => router.push('/master')} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition">
           <ArrowLeft size={20} />
@@ -256,44 +237,28 @@ export default function ConsultoriasPage() {
             {consultorias.map(c => (
               <div key={c.id} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-5">
                 <div className="flex items-start gap-4">
-
-                  {/* Avatar */}
-                  <div className="w-12 h-12 bg-[var(--brand)]/20 border border-[var(--brand)]/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span className="text-base font-bold text-[var(--brand)]">
-                      {c.name.slice(0, 2).toUpperCase()}
-                    </span>
+                  {/* Avatar / Logomarca */}
+                  <div className="relative w-12 h-12 bg-white border border-[var(--border)] rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                    {c.logo_url ? (
+                      <Image src={c.logo_url} alt={c.name} fill className="object-contain p-1" />
+                    ) : (
+                      <span className="text-base font-bold text-[var(--brand)]">
+                        {c.name.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-[var(--text-primary)]">{c.name}</h3>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${planColors[c.plan]}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${planColors[c.plan] || planColors.pro}`}>
                         {c.plan}
                       </span>
                       {c.active
                         ? <span className="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400">Ativa</span>
                         : <span className="text-xs px-2 py-0.5 rounded-full bg-red-900/40 text-red-400">Inativa</span>
                       }
-                    </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-                      {c.cnpj && <span className="text-xs text-[var(--text-muted)]">{c.cnpj}</span>}
-                      {c.email && <span className="text-xs text-[var(--text-muted)]">{c.email}</span>}
-                      {c.responsavel_nome && <span className="text-xs text-[var(--text-muted)]">Resp: {c.responsavel_nome}</span>}
-                    </div>
-                    <div className="flex gap-4 mt-3">
-                      <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-                        <Users size={13} className="text-[var(--text-muted)]" />
-                        {c.plan === 'enterprise' ? 'Avaliadores ilimitados' : `${c.max_avaliadores} avaliador${c.max_avaliadores > 1 ? 'es' : ''}`}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-                        <Building2 size={13} className="text-[var(--text-muted)]" />
-                        {c.plan === 'enterprise' ? 'Empresas ilimitadas' : `${c.max_empresas} empresa${c.max_empresas > 1 ? 's' : ''}`}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-                        <FileText size={13} className="text-[var(--text-muted)]" />
-                        Vistorias ilimitadas
-                      </div>
                     </div>
                   </div>
 
@@ -316,7 +281,6 @@ export default function ConsultoriasPage() {
                       {c.active ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
                     </button>
                   </div>
-
                 </div>
               </div>
             ))}
@@ -328,7 +292,6 @@ export default function ConsultoriasPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-
             <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-surface)]">
               <h2 className="font-semibold text-[var(--text-primary)]">
                 {editId ? 'Editar consultoria' : 'Nova consultoria'}
@@ -339,32 +302,9 @@ export default function ConsultoriasPage() {
             </div>
 
             <div className="px-6 py-5 flex flex-col gap-5">
-
-              {/* Dados */}
               <div>
                 <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Dados da consultoria</p>
                 <div className="flex flex-col gap-3">
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-[var(--text-secondary)]">CNPJ</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={form.cnpj}
-                        onChange={e => handleCnpjChange(e.target.value)}
-                        placeholder="00.000.000/0000-00"
-                        maxLength={18}
-                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition pr-10"
-                      />
-                      {buscandoCnpj && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <Loader2 size={16} className="animate-spin text-[var(--brand)]" />
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-[var(--text-muted)]">Digite o CNPJ — dados preenchidos automaticamente via Receita Federal</p>
-                  </div>
-
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-medium text-[var(--text-secondary)]">Razão social *</label>
                     <input
@@ -376,88 +316,20 @@ export default function ConsultoriasPage() {
                     />
                   </div>
 
-                  <div className="flex gap-3">
-                    <div className="flex flex-col gap-1.5 flex-1">
-                      <label className="text-xs font-medium text-[var(--text-secondary)]">Telefone</label>
-                      <input
-                        type="text"
-                        value={form.phone}
-                        onChange={e => update('phone', e.target.value)}
-                        placeholder="(27) 99999-0000"
-                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5 flex-1">
-                      <label className="text-xs font-medium text-[var(--text-secondary)]">E-mail</label>
-                      <input
-                        type="email"
-                        value={form.email}
-                        onChange={e => update('email', e.target.value)}
-                        placeholder="contato@consultoria.com.br"
-                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Responsável */}
-              <div>
-                <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Responsável</p>
-                <div className="flex flex-col gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-[var(--text-secondary)]">Nome</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">URL da Logomarca (Imagem)</label>
                     <input
                       type="text"
-                      value={form.responsavel_nome}
-                      onChange={e => update('responsavel_nome', e.target.value)}
-                      placeholder="Dr. João Silva"
+                      value={form.logo_url}
+                      onChange={e => update('logo_url', e.target.value)}
+                      placeholder="https://exemplo.com/logo.png"
                       className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                     />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-[var(--text-secondary)]">E-mail</label>
-                    <input
-                      type="email"
-                      value={form.responsavel_email}
-                      onChange={e => update('responsavel_email', e.target.value)}
-                      placeholder="joao@consultoria.com.br"
-                      className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
-                    />
+                    <p className="text-xs text-[var(--text-muted)]">A logomarca será exibida no cabeçalho e nos relatórios PDF técnicos.</p>
                   </div>
                 </div>
               </div>
 
-              {/* Plano */}
-              <div>
-                <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Plano contratado</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {PLANOS.map(p => (
-                    <button
-                      key={p.value}
-                      type="button"
-                      onClick={() => update('plan', p.value)}
-                      className={`py-4 px-3 rounded-xl border text-sm font-medium transition flex flex-col items-center gap-1.5 ${
-                        form.plan === p.value
-                          ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-white'
-                          : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-slate-500'
-                      }`}
-                    >
-                      <span className={`font-semibold ${form.plan === p.value ? 'text-[var(--text-primary)]' : p.color}`}>
-                        {p.label}
-                      </span>
-                      <span className="text-xs font-normal text-[var(--text-muted)] text-center leading-tight">
-                        {p.desc}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-[var(--text-muted)] mt-2">
-                  Vistorias ilimitadas em todos os planos.
-                </p>
-              </div>
-
-              {/* Botões */}
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setShowModal(false)}
@@ -476,7 +348,6 @@ export default function ConsultoriasPage() {
                   }
                 </button>
               </div>
-
             </div>
           </div>
         </div>

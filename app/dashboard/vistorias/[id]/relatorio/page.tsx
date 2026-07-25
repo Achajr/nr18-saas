@@ -305,7 +305,7 @@ export default function RelatorioPage() {
     try {
       const { data: v } = await supabase
         .from('vistorias')
-        .select('*, obra:obras(id, name, num_funcionarios, empresa_cliente:empresas_clientes(name, cnpj, cidade, uf)), avaliador:avaliadores(full_name, registro_mte, crea, consultoria:consultorias(name, cnpj))')
+        .select('*, obra:obras(id, name, num_funcionarios, empresa_cliente:empresas_clientes(name, cnpj, cidade, uf)), avaliador:avaliadores(full_name, registro_mte, crea, consultoria:consultorias(name, cnpj, logo_url))')
         .eq('id', vistoriaId).single()
       if (!v) { toast.error('Vistoria não encontrada'); return }
       setVistoria(v as any)
