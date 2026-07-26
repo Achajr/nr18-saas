@@ -12,7 +12,8 @@ import Image from 'next/image'
 interface Consultoria {
   id: string
   name: string
-  logo_url: string | null
+  logoUrl: string | null
+  logo_url?: string | null
   cnpj: string | null
   email: string | null
   phone: string | null
@@ -27,6 +28,7 @@ interface Consultoria {
   max_empresas: number
   max_obras: number
   active: boolean
+  login_email: string | null
   created_at: string
 }
 
@@ -72,6 +74,8 @@ const emptyForm = {
   cep: '',
   responsavel_nome: '',
   responsavel_email: '',
+  login_email: '',
+  login_password: '',
   plan: 'pro',
   active: 'true',
   observacoes: '',
@@ -87,6 +91,8 @@ export default function ConsultoriasPage() {
   const [saving, setSaving] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState('')
   const [buscandoCnpj, setBuscandoCnpj] = useState(false)
 
   useEffect(() => { loadConsultorias() }, [])
@@ -105,6 +111,16 @@ export default function ConsultoriasPage() {
 
   function update(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }))
+  }
+
+  function getLogo(c: Consultoria) {
+    return c.logoUrl || c.logo_url || ''
+  }
+
+  function updateLogoFile(file: File | null) {
+    setLogoFile(file)
+    if (logoPreview?.startsWith('blob:')) URL.revokeObjectURL(logoPreview)
+    setLogoPreview(file ? URL.createObjectURL(file) : '')
   }
 
   async function buscarCnpj(cnpj: string) {
@@ -127,6 +143,7 @@ export default function ConsultoriasPage() {
         cep: formatCep(data.cep) || f.cep,
         responsavel_nome: getResponsavelFromQsa(data) || f.responsavel_nome,
         responsavel_email: email || f.responsavel_email,
+        login_email: email || f.login_email,
       }))
       toast.success('Dados da consultoria preenchidos!')
     } catch {
@@ -146,6 +163,7 @@ export default function ConsultoriasPage() {
   function openNova() {
     setEditId(null)
     setForm(emptyForm)
+    updateLogoFile(null)
     setShowModal(true)
   }
 
@@ -163,43 +181,54 @@ export default function ConsultoriasPage() {
       cep: c.cep || '',
       responsavel_nome: c.responsavel_nome || '',
       responsavel_email: c.responsavel_email || '',
+      login_email: c.login_email || c.responsavel_email || c.email || '',
+      login_password: '',
       plan: c.plan,
       active: c.active ? 'true' : 'false',
       observacoes: '',
     })
+    updateLogoFile(null)
+    setLogoPreview(getLogo(c))
     setShowModal(true)
   }
 
   async function handleSave() {
     if (!form.name) { toast.error('Nome da consultoria é obrigatório'); return }
     if (!form.cnpj) { toast.error('CNPJ é obrigatório'); return }
+    if (!form.login_email) { toast.error('E-mail de login é obrigatório'); return }
+    if (!editId && form.login_password.length < 6) { toast.error('Senha deve ter no mínimo 6 caracteres'); return }
+    if (editId && form.login_password && form.login_password.length < 6) { toast.error('Senha deve ter no mínimo 6 caracteres'); return }
     setSaving(true)
     try {
+      const payload = new FormData()
+      payload.append('id', editId || '')
+      payload.append('name', form.name)
+      payload.append('cnpj', form.cnpj)
+      payload.append('email', form.email)
+      payload.append('phone', form.phone)
+      payload.append('endereco', form.endereco)
+      payload.append('cidade', form.cidade)
+      payload.append('uf', form.uf)
+      payload.append('cep', form.cep)
+      payload.append('responsavel_nome', form.responsavel_nome)
+      payload.append('responsavel_email', form.responsavel_email)
+      payload.append('login_email', form.login_email)
+      payload.append('login_password', form.login_password)
+      payload.append('plan', form.plan)
+      payload.append('active', form.active)
+      if (logoFile) payload.append('logo', logoFile)
+
       const res = await fetch('/api/consultorias', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editId || undefined,
-          name: form.name,
-          cnpj: form.cnpj,
-          email: form.email,
-          phone: form.phone,
-          endereco: form.endereco,
-          cidade: form.cidade,
-          uf: form.uf,
-          cep: form.cep,
-          responsavel_nome: form.responsavel_nome,
-          responsavel_email: form.responsavel_email,
-          plan: form.plan,
-          logoUrl: form.logo_url || null,
-          active: form.active === 'true'
-        })
+        body: payload
       })
 
-      if (!res.ok) throw new Error('Erro ao salvar')
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || 'Erro ao salvar')
 
       toast.success(editId ? 'Consultoria atualizada!' : 'Consultoria cadastrada!')
       setShowModal(false)
+      updateLogoFile(null)
       loadConsultorias()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao salvar')
@@ -270,8 +299,8 @@ export default function ConsultoriasPage() {
                 <div className="flex items-start gap-4">
                   {/* Avatar / Logomarca */}
                   <div className="relative w-12 h-12 bg-white border border-[var(--border)] rounded-xl flex items-center justify-center overflow-hidden shrink-0">
-                    {c.logo_url ? (
-                      <Image src={c.logo_url} alt={c.name} fill className="object-contain p-1" />
+                    {getLogo(c) ? (
+                      <Image src={getLogo(c)} alt={c.name} fill className="object-contain p-1" />
                     ) : (
                       <span className="text-base font-bold text-[var(--brand)]">
                         {c.name.slice(0, 2).toUpperCase()}
@@ -415,15 +444,22 @@ export default function ConsultoriasPage() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-[var(--text-secondary)]">URL da Logomarca (Imagem)</label>
-                    <input
-                      type="text"
-                      value={form.logo_url}
-                      onChange={e => update('logo_url', e.target.value)}
-                      placeholder="https://exemplo.com/logo.png"
-                      className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
-                    />
-                    <p className="text-xs text-[var(--text-muted)]">A logomarca será exibida no cabeçalho e nos relatórios PDF técnicos.</p>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">Logomarca</label>
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="h-16 w-16 shrink-0 rounded-xl border border-[var(--border)] bg-white bg-contain bg-center bg-no-repeat"
+                        style={{ backgroundImage: logoPreview ? `url("${logoPreview}")` : undefined }}
+                      />
+                      <div className="flex-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={e => updateLogoFile(e.target.files?.[0] || null)}
+                          className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--brand)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white focus:outline-none focus:border-[var(--brand)] transition"
+                        />
+                        <p className="mt-1 text-xs text-[var(--text-muted)]">PNG, JPG ou SVG até 3MB. Será exibida no cabeçalho e nos relatórios.</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -515,6 +551,35 @@ export default function ConsultoriasPage() {
                         </select>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Acesso da consultoria</p>
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">E-mail de login *</label>
+                    <input
+                      type="email"
+                      value={form.login_email}
+                      onChange={e => update('login_email', e.target.value)}
+                      placeholder="login@consultoria.com.br"
+                      className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">
+                      {editId ? 'Nova senha (opcional)' : 'Senha inicial *'}
+                    </label>
+                    <input
+                      type="password"
+                      value={form.login_password}
+                      onChange={e => update('login_password', e.target.value)}
+                      placeholder={editId ? 'Deixe em branco para manter a senha atual' : 'Mínimo 6 caracteres'}
+                      autoComplete="new-password"
+                      className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
+                    />
                   </div>
                 </div>
               </div>
