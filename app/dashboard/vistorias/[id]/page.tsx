@@ -342,6 +342,20 @@ export default function ChecklistPage() {
     setItens(prev => ({ ...prev, [item_id]: { ...prev[item_id], resposta } }))
   }
 
+  function marcarBlocoNaoAplicavel(bloco: ChecklistBloco) {
+    setItens(prev => {
+      const next = { ...prev }
+      bloco.itens.forEach(item => {
+        const atual = next[item.id]
+        if (atual) {
+          next[item.id] = { ...atual, resposta: 'NA', observacao: '' }
+        }
+      })
+      return next
+    })
+    toast.success('Tópico marcado como não aplicável para esta obra.')
+  }
+
   function setObservacao(item_id: string, obs: string) {
     setItens(prev => ({ ...prev, [item_id]: { ...prev[item_id], observacao: obs } }))
   }
@@ -738,6 +752,8 @@ export default function ChecklistPage() {
           const itensBloco = bloco.itens.map(i => itens[i.id]).filter(Boolean)
           const respondidosBloco = itensBloco.filter(i => i.resposta !== '').length
           const ncBloco = itensBloco.filter(i => i.resposta === 'NC').length
+          const naBloco = itensBloco.filter(i => i.resposta === 'NA').length
+          const blocoTodoNaoAplicavel = itensBloco.length > 0 && naBloco === itensBloco.length
           const aberto = secoesAbertas[bloco.id]
           return (
             <div key={bloco.id} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
@@ -750,9 +766,35 @@ export default function ChecklistPage() {
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <span className="text-xs text-[var(--text-muted)]">{respondidosBloco}/{bloco.itens.length} respondidos</span>
                     {ncBloco > 0 && <span className="text-xs text-[#A32D2D] bg-[#FCEBEB] px-2 py-0.5 rounded-full font-medium">{ncBloco} NC</span>}
+                    {naBloco > 0 && <span className="text-xs text-[#555552] bg-[#F1EFE8] px-2 py-0.5 rounded-full font-medium">{naBloco} N/A</span>}
                     {respondidosBloco === bloco.itens.length && <span className="text-xs text-[#3B6D11] bg-[#EAF3DE] px-2 py-0.5 rounded-full font-medium">Concluído</span>}
                   </div>
                 </div>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    marcarBlocoNaoAplicavel(bloco)
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      marcarBlocoNaoAplicavel(bloco)
+                    }
+                  }}
+                  className={
+                    'flex min-h-9 shrink-0 items-center justify-center rounded-xl border px-3 py-2 text-xs font-black transition ' +
+                    (blocoTodoNaoAplicavel
+                      ? 'border-[#888780] bg-[#F1EFE8] text-[#555552]'
+                      : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#888780] hover:bg-[#F1EFE8] hover:text-[#555552]')
+                  }
+                  title="Marcar todo este tópico como não aplicável"
+                  aria-label="Marcar tópico como não aplicável"
+                >
+                  — N/A
+                </span>
                 {aberto ? <ChevronUp size={16} className="text-[var(--text-muted)] flex-shrink-0" /> : <ChevronDown size={16} className="text-[var(--text-muted)] flex-shrink-0" />}
               </button>
 
