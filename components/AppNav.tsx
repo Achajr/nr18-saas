@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Building2, Users, FileText, ClipboardList,
+  LayoutDashboard, Building2, Users, FileText,
   Plus, LogOut, ChevronLeft, ChevronRight, BarChart3, Palette,
   type LucideIcon
 } from 'lucide-react'
@@ -102,7 +102,6 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
     { label: 'Dashboard', icon: LayoutDashboard, href: '/consultoria' },
     { label: 'Empresas', icon: Building2, href: '/consultoria/empresas' },
     { label: 'Avaliadores', icon: Users, href: '/consultoria/avaliadores' },
-    { label: 'Checklists', icon: ClipboardList, href: '/consultoria/checklists' },
     { label: 'Relatórios', icon: BarChart3, href: '/consultoria/relatorios', badge: pendentes || undefined },
   ] : [
     { label: 'Início', icon: LayoutDashboard, href: '/dashboard' },
@@ -118,7 +117,6 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
   ] : perfil === 'gestor' ? [
     { label: 'Dashboard', icon: LayoutDashboard, href: '/consultoria' },
     { label: 'Empresas', icon: Building2, href: '/consultoria/empresas' },
-    { label: 'Checklists', icon: ClipboardList, href: '/consultoria/checklists' },
     { label: 'Relatórios', icon: BarChart3, href: '/consultoria/relatorios', badge: pendentes || undefined },
   ] : [
     { label: 'Início', icon: LayoutDashboard, href: '/dashboard' },
