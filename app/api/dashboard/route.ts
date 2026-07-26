@@ -80,7 +80,7 @@ export async function GET(req: Request) {
         registro_mte: avaliador.registro_mte,
         crea: avaliador.crea,
         consultoria_id: avaliador.consultoriaId,
-        consultoria: { name: consultoria?.name || '' }
+        consultoria: { name: consultoria?.name || '', logoUrl: consultoria?.logoUrl || null }
       },
       stats: {
         total_empresas: totalEmpresas,

@@ -26,7 +26,7 @@ interface Avaliador {
   registro_mte: string | null
   crea: string | null
   consultoria_id: string
-  consultoria: { name: string }
+  consultoria: { name: string; logoUrl: string | null }
 }
 
 interface Stats {
@@ -113,10 +113,32 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg-surface)]/90 px-4 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandLogo size="sm" subtitle={avaliador?.consultoria?.name || ''} />
+          <div className="flex min-w-0 flex-1 items-center justify-start gap-4">
+            <BrandLogo
+              size="sm"
+              consultoriaLogoUrl={avaliador?.consultoria?.logoUrl || null}
+              className="shrink-0"
+            />
+            <div className="min-w-0">
+              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--brand)]">Painel do avaliador</div>
+              <h1 className="whitespace-normal break-words text-xl font-black leading-tight tracking-tight text-[var(--text-primary)] sm:text-2xl lg:text-3xl">
+                {avaliador?.consultoria?.name || 'Consultoria'}
+              </h1>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-1 items-center justify-end gap-3">
+            <button
+              onClick={() => router.push('/dashboard/obras/nova')}
+              className="hidden rounded-2xl bg-[var(--brand)] px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-[var(--brand-muted)] transition hover:bg-[var(--brand-hover)] md:inline-flex"
+            >
+              Nova vistoria
+            </button>
+            <button
+              onClick={() => router.push('/dashboard/relatorios')}
+              className="hidden rounded-2xl border border-[var(--border)] px-4 py-2.5 text-sm font-black text-[var(--text-secondary)] transition hover:border-[var(--brand)]/50 hover:bg-[var(--brand-muted)] hover:text-[var(--brand)] sm:inline-flex"
+            >
+              Relatórios
+            </button>
             <div className="hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-primary)] px-4 py-2 text-right sm:block">
               <div className="text-sm font-bold text-[var(--text-primary)]">{avaliador?.full_name}</div>
               <div className="text-xs text-[var(--text-muted)]">
