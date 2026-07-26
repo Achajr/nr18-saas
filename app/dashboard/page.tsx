@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import {
   Activity,
   ArrowRight,
@@ -17,7 +18,6 @@ import {
   TrendingUp,
   AlertCircle
 } from 'lucide-react'
-import BrandLogo from '@/components/BrandLogo'
 
 interface Avaliador {
   id: string
@@ -114,11 +114,15 @@ export default function DashboardPage() {
       <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg-surface)]/90 px-4 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex min-w-0 flex-1 items-center justify-start gap-4">
-            <BrandLogo
-              size="sm"
-              consultoriaLogoUrl={avaliador?.consultoria?.logoUrl || null}
-              className="shrink-0"
-            />
+            <div className="relative h-16 w-36 shrink-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.10)]">
+              {avaliador?.consultoria?.logoUrl ? (
+                <Image src={avaliador.consultoria.logoUrl} alt={avaliador?.consultoria?.name || 'Consultoria'} fill className="object-contain p-2" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xl font-black text-[var(--brand)]">
+                  {(avaliador?.consultoria?.name || 'C').slice(0, 2).toUpperCase()}
+                </div>
+              )}
+            </div>
             <div className="min-w-0">
               <div className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--brand)]">Painel do avaliador</div>
               <h1 className="whitespace-normal break-words text-xl font-black leading-tight tracking-tight text-[var(--text-primary)] sm:text-2xl lg:text-3xl">
