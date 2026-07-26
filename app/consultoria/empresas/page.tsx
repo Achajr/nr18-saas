@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import { consultarCnpj, formatCep, formatCnpj, onlyDigits } from '@/lib/cnpj'
 import toast from 'react-hot-toast'
 import {
@@ -74,35 +73,18 @@ export default function EmpresasPage() {
 
   async function loadData() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-
-      const { data: av } = await supabase
-        .from('avaliadores')
-        .select('consultoria_id')
-        .eq('id', user.id)
-        .single()
-
-      if (!av) { router.push('/auth/login'); return }
-
-      setConsultoriaId(av.consultoria_id)
-
-      const [{ data: emps }, { data: avs }] = await Promise.all([
-        supabase
-          .from('empresas_clientes')
-          .select('*, avaliador:avaliadores(full_name)')
-          .eq('consultoria_id', av.consultoria_id)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('avaliadores')
-          .select('id, full_name, role')
-          .eq('consultoria_id', av.consultoria_id)
-          .eq('active', true)
-          .neq('role', 'viewer'),
+      const [empresasRes, avaliadoresRes] = await Promise.all([
+        fetch('/api/empresas?all=1'),
+        fetch('/api/consultoria/avaliadores'),
       ])
+      if (empresasRes.status === 401 || avaliadoresRes.status === 401) { router.push('/auth/login'); return }
+      if (avaliadoresRes.status === 403) { router.push('/dashboard'); return }
 
-      setEmpresas(emps || [])
-      setAvaliadores(avs || [])
+      const empresasData = await empresasRes.json()
+      const avaliadoresData = await avaliadoresRes.json()
+      setConsultoriaId(avaliadoresData.consultoria?.id || '')
+      setEmpresas(empresasData.empresas || [])
+      setAvaliadores((avaliadoresData.avaliadores || []).filter((av: Avaliador) => av.role !== 'viewer'))
     } catch (err) {
       console.error(err)
     } finally {
@@ -210,55 +192,14 @@ export default function EmpresasPage() {
     if (!form.name) { toast.error('Nome da empresa é obrigatório'); return }
     setSaving(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (editId) {
-        const { error } = await supabase
-          .from('empresas_clientes')
-          .update({
-            name: form.name,
-            cnpj: form.cnpj || null,
-            email: form.email || null,
-            phone: form.phone || null,
-            endereco: form.endereco || null,
-            cidade: form.cidade || null,
-            uf: form.uf || null,
-            cep: form.cep || null,
-            cnae: form.cnae || null,
-            grau_risco: form.grau_risco || null,
-            responsavel_nome: form.responsavel_nome || null,
-            responsavel_cargo: form.responsavel_cargo || null,
-            responsavel_email: form.responsavel_email || null,
-            avaliador_responsavel: form.avaliador_responsavel || null,
-          })
-          .eq('id', editId)
-        if (error) throw error
-        toast.success('Empresa atualizada!')
-      } else {
-        const { error } = await supabase
-          .from('empresas_clientes')
-          .insert({
-            consultoria_id: consultoriaId,
-            name: form.name,
-            cnpj: form.cnpj || null,
-            email: form.email || null,
-            phone: form.phone || null,
-            endereco: form.endereco || null,
-            cidade: form.cidade || null,
-            uf: form.uf || null,
-            cep: form.cep || null,
-            cnae: form.cnae || null,
-            grau_risco: form.grau_risco || null,
-            responsavel_nome: form.responsavel_nome || null,
-            responsavel_cargo: form.responsavel_cargo || null,
-            responsavel_email: form.responsavel_email || null,
-            avaliador_responsavel: form.avaliador_responsavel || null,
-            active: true,
-            created_by: user?.id,
-          })
-        if (error) throw error
-        toast.success('Empresa cadastrada!')
-      }
+      const res = await fetch('/api/empresas', {
+        method: editId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editId || undefined, consultoriaId, ...form }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || 'Erro ao salvar')
+      toast.success(editId ? 'Empresa atualizada!' : 'Empresa cadastrada!')
       setShowModal(false)
       loadData()
     } catch (err: any) {
@@ -269,11 +210,12 @@ export default function EmpresasPage() {
   }
 
   async function toggleActive(e: Empresa) {
-    const { error } = await supabase
-      .from('empresas_clientes')
-      .update({ active: !e.active })
-      .eq('id', e.id)
-    if (error) { toast.error('Erro ao atualizar'); return }
+    const res = await fetch('/api/empresas', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: e.id, active: !e.active }),
+    })
+    if (!res.ok) { toast.error('Erro ao atualizar'); return }
     toast.success(e.active ? 'Empresa desativada' : 'Empresa ativada')
     loadData()
   }

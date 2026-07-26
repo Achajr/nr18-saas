@@ -1,18 +1,17 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
+import { getSessionUserIdFromRequest } from '@/lib/auth/session'
 
 export async function GET(req: Request) {
   try {
-    const cookieHeader = req.headers.get('cookie') || ''
-    const userIdCookie = cookieHeader.split('; ').find(row => row.startsWith('auth_user_id='))?.split('=')[1]
+    const userId = getSessionUserIdFromRequest(req)
 
-    if (!userIdCookie) {
+    if (!userId) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     const avaliador = await prisma.avaliador.findUnique({
-      where: { id: userIdCookie },
-      include: { consultoria: true }
+      where: { id: userId },
     })
 
     if (!avaliador) {
@@ -20,6 +19,12 @@ export async function GET(req: Request) {
     }
 
     const cid = avaliador.consultoriaId
+
+    if (!cid) {
+      return NextResponse.json({ error: 'Avaliador sem consultoria vinculada' }, { status: 403 })
+    }
+
+    const consultoria = await prisma.consultoria.findUnique({ where: { id: cid } })
 
     const totalEmpresas = await prisma.empresaCliente.count({
       where: { consultoriaId: cid, active: true }
@@ -44,23 +49,26 @@ export async function GET(req: Request) {
       where: { avaliadorId: avaliador.id },
       orderBy: { createdAt: 'desc' },
       take: 5,
-      include: {
-        obra: {
-          include: { empresaCliente: true }
-        }
-      }
     })
+
+    const obraIds = Array.from(new Set(ultimasVistorias.map(v => v.obraId)))
+    const obras = await prisma.obra.findMany({ where: { id: { in: obraIds } } })
+    const empresas = await prisma.empresaCliente.findMany({
+      where: { id: { in: obras.map(o => o.empresaClienteId).filter((id): id is string => !!id) } },
+    })
+    const obraMap = new Map(obras.map(obra => [obra.id, obra]))
+    const empresaMap = new Map(empresas.map(empresa => [empresa.id, empresa]))
 
     const formattedVistorias = ultimasVistorias.map(v => ({
       id: v.id,
-      numero: v.numero.toString(),
-      data_vistoria: v.createdAt.toISOString(),
+      numero: v.numero,
+      data_vistoria: v.data_vistoria || v.createdAt.toISOString(),
       status: v.status,
-      indice_conformidade: 0,
-      classificacao: null,
+      indice_conformidade: v.indice_conformidade,
+      classificacao: v.classificacao,
       obra: {
-        name: v.obra.nome,
-        empresa_cliente: { name: v.obra.empresaCliente.razaoSocial }
+        name: obraMap.get(v.obraId)?.name || 'Obra',
+        empresa_cliente: { name: empresaMap.get(obraMap.get(v.obraId)?.empresaClienteId || '')?.name || 'Empresa' }
       }
     }))
 
@@ -69,10 +77,10 @@ export async function GET(req: Request) {
         id: avaliador.id,
         full_name: avaliador.fullName,
         role: avaliador.role,
-        registro_mte: null,
-        crea: null,
+        registro_mte: avaliador.registro_mte,
+        crea: avaliador.crea,
         consultoria_id: avaliador.consultoriaId,
-        consultoria: { name: avaliador.consultoria.name }
+        consultoria: { name: consultoria?.name || '' }
       },
       stats: {
         total_empresas: totalEmpresas,
@@ -82,7 +90,7 @@ export async function GET(req: Request) {
       },
       vistorias: formattedVistorias
     })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Erro interno ao carregar dashboard' }, { status: 500 })
   }
 }

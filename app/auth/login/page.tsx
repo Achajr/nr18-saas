@@ -42,11 +42,6 @@ export default function LoginPage() {
         return
       }
 
-      // Salva sessão localmente para garantir login em HTTP sem SSL
-      if (data.user?.id) {
-        localStorage.setItem('auth_user_id', data.user.id)
-      }
-
       if (data.master) {
         toast.success('Bem-vindo, Master!')
         window.location.href = '/master'

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import {
   ArrowLeft, Loader2, Mail, Phone, Search,
   ShieldCheck, UserCog, Users
@@ -48,40 +47,12 @@ export default function ConsultoriaAvaliadoresPage() {
 
   async function loadData() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-
-      const { data: current } = await supabase
-        .from('avaliadores')
-        .select('consultoria_id, role, consultoria:consultorias(name)')
-        .eq('id', user.id)
-        .single()
-
-      if (!current) {
-        router.push('/auth/login')
-        return
-      }
-
-      if (current.role !== 'gestor') {
-        router.push('/dashboard')
-        return
-      }
-
-      const consultoria = Array.isArray(current.consultoria)
-        ? current.consultoria[0]
-        : current.consultoria
-      setConsultoriaName(consultoria?.name || '')
-
-      const { data } = await supabase
-        .from('avaliadores')
-        .select('id, full_name, email, role, tipo_registro, registro_mte, crea, phone, active, vistorias(id, status)')
-        .eq('consultoria_id', current.consultoria_id)
-        .order('full_name')
-
-      setAvaliadores((data || []) as Avaliador[])
+      const res = await fetch('/api/consultoria/avaliadores')
+      if (res.status === 403) { router.push('/dashboard'); return }
+      if (!res.ok) { router.push('/auth/login'); return }
+      const data = await res.json()
+      setConsultoriaName(data.consultoria?.name || '')
+      setAvaliadores((data.avaliadores || []) as Avaliador[])
     } finally {
       setLoading(false)
     }

@@ -65,70 +65,17 @@ export function saveLocalChecklist(blocos: ChecklistBloco[], consultoriaId?: str
   window.localStorage.setItem(storageKey(consultoriaId), JSON.stringify(normalizeChecklist(blocos)))
 }
 
-export async function loadChecklistModelo(supabase: any, consultoriaId?: string | null): Promise<ChecklistBloco[]> {
-  if (consultoriaId) {
-    try {
-      const { data, error } = await supabase
-        .from('checklist_modelos')
-        .select('blocos')
-        .eq('consultoria_id', consultoriaId)
-        .eq('ativo', true)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-
-      if (!error && data?.[0]?.blocos) {
-        const normalized = normalizeChecklist(data[0].blocos)
-        saveLocalChecklist(normalized, consultoriaId)
-        return normalized
-      }
-    } catch {
-      // Tabela opcional: quando ela ainda nao existe, usamos o modelo local/padrao.
-    }
-  }
-
+export async function loadChecklistModelo(consultoriaId?: string | null): Promise<ChecklistBloco[]> {
   return loadLocalChecklist(consultoriaId) || cloneChecklist()
 }
 
 export async function saveChecklistModelo(
-  supabase: any,
   consultoriaId: string | null | undefined,
   blocos: ChecklistBloco[],
 ) {
   const normalized = normalizeChecklist(blocos)
   saveLocalChecklist(normalized, consultoriaId)
-
-  if (!consultoriaId) return { ok: true, localOnly: true }
-
-  try {
-    const { data: existing } = await supabase
-      .from('checklist_modelos')
-      .select('id')
-      .eq('consultoria_id', consultoriaId)
-      .eq('ativo', true)
-      .limit(1)
-
-    if (existing?.[0]?.id) {
-      const { error } = await supabase
-        .from('checklist_modelos')
-        .update({ blocos: normalized, updated_at: new Date().toISOString() })
-        .eq('id', existing[0].id)
-      if (error) throw error
-      return { ok: true, localOnly: false }
-    }
-
-    const { error } = await supabase
-      .from('checklist_modelos')
-      .insert({
-        consultoria_id: consultoriaId,
-        nome: 'Checklist NR-18 personalizado',
-        ativo: true,
-        blocos: normalized,
-      })
-    if (error) throw error
-    return { ok: true, localOnly: false }
-  } catch (err: any) {
-    return { ok: false, localOnly: true, error: err?.message || 'Tabela checklist_modelos indisponivel' }
-  }
+  return { ok: true, localOnly: true }
 }
 
 export function findChecklistItem(blocos: ChecklistBloco[], itemId: string) {

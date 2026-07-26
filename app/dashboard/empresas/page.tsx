@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import {
   ArrowLeft, Building2, FileText, Loader2, MapPin,
   Plus, Search
@@ -38,30 +37,10 @@ export default function DashboardEmpresasPage() {
 
   async function loadData() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-
-      const { data: av } = await supabase
-        .from('avaliadores')
-        .select('consultoria_id')
-        .eq('id', user.id)
-        .single()
-
-      if (!av) {
-        router.push('/auth/login')
-        return
-      }
-
-      const { data } = await supabase
-        .from('empresas_clientes')
-        .select('id, name, cnpj, cidade, uf, grau_risco, active, obras(id, status)')
-        .eq('consultoria_id', av.consultoria_id)
-        .order('name')
-
-      setEmpresas((data || []) as Empresa[])
+      const res = await fetch('/api/dashboard/empresas')
+      if (!res.ok) { router.push('/auth/login'); return }
+      const data = await res.json()
+      setEmpresas((data.empresas || []) as Empresa[])
     } finally {
       setLoading(false)
     }

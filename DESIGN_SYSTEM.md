@@ -112,10 +112,9 @@ bg-[#16192a] border border-[#2a2d4a] rounded-2xl w-full max-w-lg max-h-[90vh] ov
 
 ## Stack técnica
 - Next.js 14 App Router
-- Supabase (PostgreSQL + Auth + Storage)
+- PostgreSQL + Prisma
 - Tailwind CSS
 - lucide-react (ícones)
-- @supabase/ssr (client)
 - react-hot-toast (notificações)
 - BrasilAPI (CNPJ + CEP automático)
 
@@ -136,10 +135,9 @@ bg-[#16192a] border border-[#2a2d4a] rounded-2xl w-full max-w-lg max-h-[90vh] ov
 - planos_acao (id, vistoria_id, titulo, responsavel, prazo, status)
 
 ## Observações importantes
-- RLS desabilitado temporariamente em: avaliadores, empresas_clientes
 - organization_id nas tabelas obras e vistorias é NOT NULL removido (usa consultoria_id)
-- Supabase client usa @supabase/ssr createBrowserClient
-- Redirecionamento pós-login usa window.location.href (não router.push) para garantir cookie
+- Autenticação usa Prisma com cookie httpOnly assinado
+- Uploads de evidências ficam em public/uploads/vistorias
 - BrasilAPI endpoint CNPJ: https://brasilapi.com.br/api/cnpj/v1/{cnpj}
 - BrasilAPI endpoint CEP: https://brasilapi.com.br/api/cep/v1/{cep}
 

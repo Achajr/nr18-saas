@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import {
   Activity,
   ArrowRight,
@@ -80,156 +79,30 @@ export default function ConsultoriaPage() {
 
   async function loadData() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-
-      const { data: av } = await supabase
-        .from('avaliadores')
-        .select('*, consultoria:consultorias(*)')
-        .eq('id', user.id).single()
-      if (!av || av.role !== 'gestor') { router.push('/dashboard'); return }
-      setAvaliador(av)
-      setConsultoria(av.consultoria)
-
-      const cid = av.consultoria_id
-
-      // Stats basicas
-      const [
-        { count: totalAv },
-        { count: totalEmp },
-        { count: totalObras },
-        { count: totalVist },
-        { count: vstMes },
-        { count: vstConcluidas },
-        { count: vstIncompletas },
-        { count: vstAndamento },
-      ] = await Promise.all([
-        supabase.from('avaliadores').select('*', { count: 'exact', head: true }).eq('consultoria_id', cid).eq('active', true),
-        supabase.from('empresas_clientes').select('*', { count: 'exact', head: true }).eq('consultoria_id', cid).eq('active', true),
-        supabase.from('obras').select('*', { count: 'exact', head: true }).eq('consultoria_id', cid).eq('status', 'ativa'),
-        supabase.from('vistorias').select('*', { count: 'exact', head: true }).eq('consultoria_id', cid),
-        supabase.from('vistorias').select('*', { count: 'exact', head: true }).eq('consultoria_id', cid).gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
-        supabase.from('vistorias').select('*', { count: 'exact', head: true }).eq('consultoria_id', cid).eq('status', 'concluida'),
-        supabase.from('vistorias').select('*', { count: 'exact', head: true }).eq('consultoria_id', cid).eq('status', 'incompleta'),
-        supabase.from('vistorias').select('*', { count: 'exact', head: true }).eq('consultoria_id', cid).eq('status', 'em_andamento'),
-      ])
-
-      // Indice medio e total NCs
-      const { data: vistoriasData } = await supabase
-        .from('vistorias')
-        .select('indice_conformidade, total_nao_conformes')
-        .eq('consultoria_id', cid)
-        .eq('status', 'concluida')
-
-      const indiceMedio = vistoriasData && vistoriasData.length > 0
-        ? Math.round(vistoriasData.reduce((s, v) => s + (v.indice_conformidade || 0), 0) / vistoriasData.length * 100) / 100
-        : 0
-      const totalNcs = vistoriasData?.reduce((s, v) => s + (v.total_nao_conformes || 0), 0) || 0
-
-      setStats({
-        total_avaliadores: totalAv || 0,
-        total_empresas: totalEmp || 0,
-        total_obras: totalObras || 0,
-        total_vistorias: totalVist || 0,
-        vistorias_mes: vstMes || 0,
-        vistorias_concluidas: vstConcluidas || 0,
-        vistorias_incompletas: vstIncompletas || 0,
-        vistorias_andamento: vstAndamento || 0,
-        indice_medio: indiceMedio,
-        total_ncs: totalNcs,
-      })
-
-      // Ultimas vistorias
-      const { data: ultVist } = await supabase
-        .from('vistorias')
-        .select('id, numero, data_vistoria, status, indice_conformidade, classificacao, obra:obras(name, empresa_cliente:empresas_clientes(name)), avaliador:avaliadores(full_name)')
-        .eq('consultoria_id', cid)
-        .order('created_at', { ascending: false })
-        .limit(8)
-      setUltimasVistorias((ultVist || []) as any)
-
-      // Incompletas
-      const { data: incompl } = await supabase
-        .from('vistorias')
-        .select('id, numero, data_vistoria, status, indice_conformidade, classificacao, obra:obras(name, empresa_cliente:empresas_clientes(name)), avaliador:avaliadores(full_name)')
-        .eq('consultoria_id', cid)
-        .in('status', ['incompleta', 'em_andamento'])
-        .order('created_at', { ascending: false })
-      setIncompletas((incompl || []) as any)
-
-      // Ranking empresas por NCs
-      const { data: empNcs } = await supabase
-        .from('vistorias')
-        .select('total_nao_conformes, indice_conformidade, obra:obras(empresa_cliente:empresas_clientes(id, name))')
-        .eq('consultoria_id', cid)
-        .eq('status', 'concluida')
-
-      if (empNcs) {
-        const empMap: Record<string, any> = {}
-        empNcs.forEach((v: any) => {
-          const emp = v.obra?.empresa_cliente
-          if (!emp) return
-          if (!empMap[emp.id]) empMap[emp.id] = { id: emp.id, name: emp.name, total_ncs: 0, total_vistorias: 0, indice_sum: 0 }
-          empMap[emp.id].total_ncs += v.total_nao_conformes || 0
-          empMap[emp.id].total_vistorias += 1
-          empMap[emp.id].indice_sum += v.indice_conformidade || 0
-        })
-        const ranking = Object.values(empMap)
-          .map((e: any) => ({ ...e, indice_medio: Math.round(e.indice_sum / e.total_vistorias * 100) / 100 }))
-          .sort((a: any, b: any) => b.total_ncs - a.total_ncs)
-          .slice(0, 6)
-        setRankingEmpresas(ranking as any)
-      }
-
-      // Stats por avaliador
-      const { data: avsList } = await supabase
-        .from('avaliadores')
-        .select('id, full_name')
-        .eq('consultoria_id', cid)
-        .eq('active', true)
-
-      if (avsList) {
-        const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
-        const avStatsArr: AvaliadorStats[] = []
-        for (const av of avsList) {
-          const { data: avVist } = await supabase
-            .from('vistorias')
-            .select('indice_conformidade, created_at')
-            .eq('avaliador_id', av.id)
-            .eq('status', 'concluida')
-          const totalV = avVist?.length || 0
-          const meV = avVist?.filter(v => v.created_at >= inicioMes).length || 0
-          const indV = totalV > 0 ? Math.round(avVist!.reduce((s, v) => s + (v.indice_conformidade || 0), 0) / totalV * 100) / 100 : 0
-          avStatsArr.push({ id: av.id, full_name: av.full_name, total_vistorias: totalV, vistorias_mes: meV, indice_medio: indV })
-        }
-        setAvaliadorStats(avStatsArr.sort((a, b) => b.total_vistorias - a.total_vistorias))
-      }
-
-      // Evolucao mensal (6 meses)
-      const meses: { mes: string; total: number; indice_medio: number }[] = []
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date()
-        d.setMonth(d.getMonth() - i)
-        const inicio = new Date(d.getFullYear(), d.getMonth(), 1).toISOString()
-        const fim = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).toISOString()
-        const { data: mv } = await supabase
-          .from('vistorias')
-          .select('indice_conformidade')
-          .eq('consultoria_id', cid)
-          .eq('status', 'concluida')
-          .gte('data_vistoria', inicio.split('T')[0])
-          .lte('data_vistoria', fim.split('T')[0])
-        const total = mv?.length || 0
-        const indice = total > 0 ? Math.round(mv!.reduce((s, v) => s + (v.indice_conformidade || 0), 0) / total * 100) / 100 : 0
-        meses.push({ mes: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }), total, indice_medio: indice })
-      }
-      setEvolucaoMensal(meses)
-
+      const res = await fetch('/api/consultoria/dashboard')
+      if (res.status === 403) { router.push('/dashboard'); return }
+      if (!res.ok) { router.push('/auth/login'); return }
+      const data = await res.json()
+      setAvaliador(data.avaliador)
+      setConsultoria(data.consultoria)
+      setStats(data.stats)
+      setUltimasVistorias(data.ultimasVistorias || [])
+      setIncompletas(data.incompletas || [])
+      setRankingEmpresas(data.rankingEmpresas || [])
+      setAvaliadorStats(data.avaliadorStats || [])
+      setEvolucaoMensal(data.evolucaoMensal || [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
 
-  async function handleLogout() { await supabase.auth.signOut(); window.location.href = '/auth/login' }
+  async function handleLogout() {
+    await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'logout' }),
+    })
+    window.location.href = '/auth/login'
+  }
 
   const statusConfig: Record<string, { label: string; color: string }> = {
     em_andamento: { label: 'Em andamento', color: 'bg-[var(--warning-bg)] text-[var(--warning)]' },

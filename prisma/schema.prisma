@@ -8,165 +8,192 @@ datasource db {
 }
 
 model AuthUser {
-  id           String      @id @default(uuid()) @db.Uuid
-  email        String      @unique
-  passwordHash String?     @map("password_hash")
-  createdAt    DateTime    @default(now()) @map("created_at")
-  updatedAt    DateTime    @default(now()) @updatedAt @map("updated_at")
-  avaliador    Avaliador?
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("auth_users")
 }
 
 model MasterAdmin {
-  id        String   @id @default(uuid()) @db.Uuid
-  fullName  String?  @map("full_name")
-  email     String   @unique
+  id        String   @id @default(uuid())
+  fullName  String   @map("full_name")
+  email     String?  @unique
   active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("master_admins")
 }
 
 model Consultoria {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  logoUrl   String?  @map("logo_url")
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-
-  avaliadores      Avaliador[]
-  empresasClientes EmpresaCliente[]
-  obras            Obra[]
-  vistorias        Vistoria[]
+  id                String   @id @default(uuid())
+  name              String
+  cnpj              String?
+  email             String?
+  phone             String?
+  responsavel_nome  String?
+  responsavel_email String?
+  plan              String   @default("pro")
+  max_avaliadores   Int      @default(5)
+  max_empresas      Int      @default(30)
+  max_obras         Int      @default(999)
+  active            Boolean  @default(true)
+  created_by        String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updated_at        DateTime
+  logo_path         String?
+  logoUrl           String?  @map("logo_url")
 
   @@map("consultorias")
 }
 
 model Avaliador {
-  id            String      @id @db.Uuid
-  consultoriaId String      @map("consultoria_id") @db.Uuid
-  email         String
-  fullName      String      @map("full_name")
-  role          String      @default("avaliador")
-  active        Boolean     @default(true)
-  createdAt     DateTime    @default(now()) @map("created_at")
-
-  authUser      AuthUser    @relation(fields: [id], references: [id], onDelete: Cascade)
-  consultoria   Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
-  vistorias     Vistoria[]
+  id            String   @id
+  consultoriaId String?  @map("consultoria_id")
+  fullName      String   @map("full_name")
+  email         String?  @unique
+  role          String   @default("avaliador")
+  tipo_registro String?
+  registro_mte  String?
+  crea          String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updated_at    DateTime
 
   @@map("avaliadores")
 }
 
 model EmpresaCliente {
-  id            String      @id @default(uuid()) @db.Uuid
-  consultoriaId String      @map("consultoria_id") @db.Uuid
-  razaoSocial   String      @map("razao_social")
-  nomeFantasia  String?     @map("nome_fantasia")
-  cnpj          String?
-  active        Boolean     @default(true)
-  createdAt     DateTime    @default(now()) @map("created_at")
-
-  consultoria   Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
-  obras         Obra[]
+  id                    String   @id @default(uuid())
+  consultoriaId         String   @map("consultoria_id")
+  name                  String
+  cnpj                  String?
+  email                 String?
+  phone                 String?
+  endereco              String?
+  cidade                String?
+  uf                    String?
+  cep                   String?
+  cnae                  String?
+  grau_risco            String?
+  responsavel_nome      String?
+  responsavel_cargo     String?
+  responsavel_email     String?
+  avaliador_responsavel String?
+  active                Boolean  @default(true)
+  created_by            String?
+  createdAt             DateTime @default(now()) @map("created_at")
+  updated_at            DateTime
 
   @@map("empresas_clientes")
 }
 
 model Obra {
-  id               String           @id @default(uuid()) @db.Uuid
-  consultoriaId    String           @map("consultoria_id") @db.Uuid
-  empresaClienteId String           @map("empresa_cliente_id") @db.Uuid
-  nome             String
-  endereco         String?
-  status           String           @default("ativa")
-  createdAt        DateTime         @default(now()) @map("created_at")
-
-  consultoria      Consultoria      @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
-  empresaCliente   EmpresaCliente   @relation(fields: [empresaClienteId], references: [id], onDelete: Cascade)
-  empreiteiras     ObraEmpreiteira[]
-  vistorias        Vistoria[]
+  id               String   @id @default(uuid())
+  consultoriaId    String   @map("consultoria_id")
+  empresaClienteId String?  @map("empresa_cliente_id")
+  avaliador_id     String?
+  name             String
+  etapa            String?
+  status           String   @default("ativa")
+  empresa_nome     String?
+  empresa_cnpj     String?
+  num_funcionarios Int      @default(0)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updated_at       DateTime
 
   @@map("obras")
 }
 
 model ObraEmpreiteira {
-  id        String   @id @default(uuid()) @db.Uuid
-  obraId    String   @map("obra_id") @db.Uuid
-  nome      String
-  cnpj      String?
-  ativa     Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-
-  obra      Obra     @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  id               String   @id @default(uuid())
+  obraId           String   @map("obra_id")
+  consultoria_id   String?
+  name             String
+  cnpj             String?
+  num_funcionarios Int      @default(0)
+  ativa            Boolean  @default(true)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updated_at       DateTime
 
   @@map("obra_empreiteiras")
 }
 
 model Vistoria {
-  id             String    @id @default(uuid()) @db.Uuid
-  consultoriaId  String    @map("consultoria_id") @db.Uuid
-  obraId         String    @map("obra_id") @db.Uuid
-  avaliadorId    String    @map("avaliador_id") @db.Uuid
-  numero         Int       @default(autoincrement())
-  status         String    @default("em_andamento")
-  parecerIa      String?   @map("parecer_ia")
-  parecerEditado  String?   @map("parecer_editado")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
-
-  consultoria    Consultoria @relation(fields: [consultoriaId], references: [id], onDelete: Cascade)
-  obra           Obra        @relation(fields: [obraId], references: [id], onDelete: Cascade)
-  avaliador      Avaliador   @relation(fields: [avaliadorId], references: [id], onDelete: Cascade)
-
-  itens          VistoriaItem[]
-  fotos          VistoriaFoto[]
-  vinculos       VistoriaItemEmpresa[]
+  id                  String   @id @default(uuid())
+  obraId              String   @map("obra_id")
+  consultoriaId       String   @map("consultoria_id")
+  avaliadorId         String   @map("avaliador_id")
+  numero              String
+  data_vistoria       String
+  clima               String?
+  etapa_obra          String?
+  observacoes_gerais  String?
+  status              String   @default("em_andamento")
+  total_itens         Int      @default(0)
+  total_conformes     Int      @default(0)
+  total_nao_conformes Int      @default(0)
+  total_na            Int      @default(0)
+  indice_conformidade Float    @default(0)
+  classificacao       String?
+  parecerIa           String?  @map("parecer_ia")
+  parecerEditado      String?  @map("parecer_editado")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   @@map("vistorias")
 }
 
 model VistoriaItem {
-  id          String   @id @default(uuid()) @db.Uuid
-  vistoriaId  String   @map("vistoria_id") @db.Uuid
-  itemId      String   @map("item_id")
-  blocoId     String   @map("bloco_id")
-  status      String   @default("C")
-  observacao  String?
-  itemTexto   String?  @map("item_texto")
-  itemRef     String?  @map("item_ref")
-  itemNivel   String?  @map("item_nivel")
-  itemMulta   String?  @map("item_multa")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  vistoria    Vistoria @relation(fields: [vistoriaId], references: [id], onDelete: Cascade)
+  id                    String   @id @default(uuid())
+  vistoriaId            String   @map("vistoria_id")
+  itemId                String   @map("item_id")
+  blocoId               String   @map("bloco_id")
+  bloco_titulo          String?
+  itemTexto             String?  @map("item_texto")
+  itemRef               String?  @map("item_ref")
+  itemNivel             String?  @map("item_nivel")
+  item_perigo           String?
+  itemMulta             String?  @map("item_multa")
+  item_nr_texto         String?
+  item_etapa            String?
+  item_tipo_verificacao String?
+  item_evidencias       Json     @default("[]")
+  item_aplicabilidade   String?
+  item_criterio         String?
+  status                String
+  observacao            String?
+  createdAt             DateTime @default(now()) @map("created_at")
+  updated_at            DateTime
 
   @@map("vistoria_itens")
 }
 
 model VistoriaFoto {
-  id             String   @id @default(uuid()) @db.Uuid
-  vistoriaId     String   @map("vistoria_id") @db.Uuid
-  itemId         String   @map("item_id")
-  vistoriaItemId String?  @map("vistoria_item_id") @db.Uuid
-  storagePath    String   @map("storage_path")
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  vistoria       Vistoria @relation(fields: [vistoriaId], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid())
+  vistoriaId      String   @map("vistoria_id")
+  organization_id String?
+  itemId          String?  @map("item_id")
+  vistoriaItemId  String?  @map("vistoria_item_id")
+  storagePath     String   @map("storage_path")
+  filename        String?
+  mime_type       String?
+  tipo            String   @default("nc")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   @@map("vistoria_fotos")
 }
 
 model VistoriaItemEmpresa {
-  id         String   @id @default(uuid()) @db.Uuid
-  vistoriaId String   @map("vistoria_id") @db.Uuid
-  itemId     String   @map("item_id")
-  empresa    String
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  vistoria   Vistoria @relation(fields: [vistoriaId], references: [id], onDelete: Cascade)
+  id             String   @id @default(uuid())
+  vistoriaId     String   @map("vistoria_id")
+  itemId         String   @map("item_id")
+  empresa_tipo   String
+  empreiteira_id String?
+  createdAt      DateTime @default(now()) @map("created_at")
 
   @@map("vistoria_item_empresas")
 }

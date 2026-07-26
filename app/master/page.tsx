@@ -38,9 +38,7 @@ export default function MasterPage() {
 
   async function loadData() {
     try {
-      const localUserId = localStorage.getItem('auth_user_id')
-      const url = localUserId ? `/api/master?userId=${localUserId}` : '/api/master'
-      const res = await fetch(url)
+      const res = await fetch('/api/master')
       if (!res.ok) {
         router.push('/auth/login')
         return
@@ -62,7 +60,6 @@ export default function MasterPage() {
   }
 
   async function handleLogout() {
-    localStorage.removeItem('auth_user_id')
     await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

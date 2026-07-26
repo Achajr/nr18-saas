@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Plus, User, X, Loader2,
@@ -76,20 +75,15 @@ export default function Avaliadores() {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const [{ data: avs }, { data: cons }] = await Promise.all([
-      supabase
-        .from('avaliadores')
-        .select('*, consultoria:consultorias(name)')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('consultorias')
-        .select('id, name, plan')
-        .eq('active', true)
-        .order('name'),
-    ])
-    setAvaliadores(avs || [])
-    setConsultorias(cons || [])
-    setLoading(false)
+    try {
+      const res = await fetch('/api/master/avaliadores')
+      if (!res.ok) { router.push('/auth/login'); return }
+      const data = await res.json()
+      setAvaliadores(data.avaliadores || [])
+      setConsultorias(data.consultorias || [])
+    } finally {
+      setLoading(false)
+    }
   }
 
   function update(field: string, value: string) {
@@ -154,54 +148,45 @@ export default function Avaliadores() {
         : null
 
       if (editId) {
-        // Atualiza dados do avaliador
-        const { error } = await supabase
-          .from('avaliadores')
-          .update({
+        const res = await fetch('/api/master/avaliadores', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editId,
             full_name: form.full_name,
             consultoria_id: form.consultoria_id,
             role: dbRole,
             tipo_registro: form.tipo_registro,
             registro_mte: form.tipo_registro === 'mte' ? form.registro_mte || null : null,
             crea,
-            phone: form.phone || null,
-          })
-          .eq('id', editId)
-        if (error) throw error
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok || data.error) throw new Error(data.error || 'Erro ao salvar')
         toast.success('Avaliador atualizado!')
       } else {
-        // 1. Cria usuário no Auth via Supabase Admin (precisamos de service_role)
-        // Por ora usamos signUp — em produção usar Admin API no servidor
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: form.email,
-          password: form.password,
-          options: { data: { full_name: form.full_name } }
-        })
-        if (authError) throw authError
-        if (!authData.user) throw new Error('Usuário não criado')
-
-        // 2. Cria registro do avaliador
-        const { error: avError } = await supabase
-          .from('avaliadores')
-          .insert({
-            id: authData.user.id,
+        const res = await fetch('/api/master/avaliadores', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             consultoria_id: form.consultoria_id,
             full_name: form.full_name,
             email: form.email,
+            password: form.password,
             role: dbRole,
             tipo_registro: form.tipo_registro,
             registro_mte: form.tipo_registro === 'mte' ? form.registro_mte || null : null,
             crea,
-            phone: form.phone || null,
-            active: true,
-          })
-        if (avError) throw avError
-        toast.success('Avaliador cadastrado! Ele receberá o e-mail de confirmação.')
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok || data.error) throw new Error(data.error || 'Erro ao salvar')
+        toast.success('Avaliador cadastrado!')
       }
       setShowModal(false)
       loadData()
     } catch (err: any) {
-      if (err.message?.includes('already registered')) {
+      if (err.message?.includes('já está cadastrado')) {
         toast.error('Este e-mail já está cadastrado no sistema')
       } else {
         toast.error(err.message || 'Erro ao salvar')
@@ -212,11 +197,12 @@ export default function Avaliadores() {
   }
 
   async function toggleActive(a: Avaliador) {
-    const { error } = await supabase
-      .from('avaliadores')
-      .update({ active: !a.active })
-      .eq('id', a.id)
-    if (error) { toast.error('Erro ao atualizar'); return }
+    const res = await fetch('/api/master/avaliadores', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: a.id, active: !a.active }),
+    })
+    if (!res.ok) { toast.error('Erro ao atualizar'); return }
     toast.success(a.active ? 'Avaliador desativado' : 'Avaliador ativado')
     loadData()
   }

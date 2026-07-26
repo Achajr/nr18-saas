@@ -1,22 +1,17 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
+import { getSessionUserIdFromRequest } from '@/lib/auth/session'
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url)
-    let userIdCookie = searchParams.get('userId')
+    const userId = getSessionUserIdFromRequest(req)
 
-    if (!userIdCookie) {
-      const cookieHeader = req.headers.get('cookie') || ''
-      userIdCookie = cookieHeader.split('; ').find(row => row.startsWith('auth_user_id='))?.split('=')[1] || null
-    }
-
-    if (!userIdCookie) {
+    if (!userId) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     const user = await prisma.authUser.findUnique({
-      where: { id: userIdCookie }
+      where: { id: userId }
     })
 
     if (!user) {
@@ -42,11 +37,17 @@ export async function GET(req: Request) {
     const formattedConsultorias = consultorias.map(c => ({
       id: c.id,
       name: c.name,
-      cnpj: null,
-      plan: 'pro',
+      cnpj: c.cnpj,
+      email: c.email,
+      phone: c.phone,
+      responsavel_nome: c.responsavel_nome,
+      responsavel_email: c.responsavel_email,
+      plan: c.plan,
       active: c.active,
-      max_avaliadores: 10,
-      max_empresas: 50,
+      max_avaliadores: c.max_avaliadores,
+      max_empresas: c.max_empresas,
+      max_obras: c.max_obras,
+      logo_url: c.logoUrl,
       created_at: c.createdAt.toISOString()
     }))
 
@@ -61,7 +62,7 @@ export async function GET(req: Request) {
       },
       consultorias: formattedConsultorias
     })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Erro interno ao carregar painel master' }, { status: 500 })
   }
 }

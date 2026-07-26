@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
 import BrandLogo from '@/components/BrandLogo'
@@ -62,56 +61,30 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      // 1. Criar usuário no Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: { data: { full_name: form.full_name } },
-      })
-      if (authError) throw authError
-      if (!authData.user) throw new Error('Usuário não criado')
-
-      // 2. Criar consultoria no schema atual
-      const { data: consultoria, error: consultoriaError } = await supabase
-        .from('consultorias')
-        .insert({
-          name: form.org_name,
-          cnpj: form.org_cnpj || null,
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'register',
           email: form.email,
-          responsavel_nome: form.full_name,
-          responsavel_email: form.email,
-          plan: 'pro',
-          max_avaliadores: 5,
-          max_empresas: 30,
-          max_obras: 999,
-          active: true,
-          created_by: authData.user.id,
-        })
-        .select('id')
-        .single()
-      if (consultoriaError) throw consultoriaError
-
-      // 3. Criar vínculo do usuário como avaliador/gestor
-      const { error: avaliadorError } = await supabase
-        .from('avaliadores')
-        .insert({
-          id: authData.user.id,
-          consultoria_id: consultoria.id,
+          password: form.password,
           full_name: form.full_name,
-          email: form.email,
+          org_name: form.org_name,
+          org_cnpj: form.org_cnpj,
           role: dbRole,
           tipo_registro: precisaMTE ? 'mte' : precisaCREA ? 'crea' : null,
           registro_mte: precisaMTE ? (form.registro_mte || null) : null,
           crea: precisaCREA ? (form.crea_numero ? `CREA-${creaEstado} ${form.crea_numero}` : null) : null,
-          active: true,
-        })
-      if (avaliadorError) throw avaliadorError
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || 'Erro ao criar conta')
 
       toast.success('Conta criada! Bem-vindo ao sistema.')
       router.push(dbRole === 'gestor' ? '/consultoria' : '/dashboard')
     } catch (err: any) {
       console.error(err)
-      if (err.message?.includes('already registered')) {
+      if (err.message?.includes('já está cadastrado')) {
         toast.error('Este e-mail já está cadastrado')
       } else {
         toast.error(err.message || 'Erro ao criar conta')

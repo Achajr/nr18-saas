@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import { CHECKLIST, MULTA_INFO, getChecklistItemMeta, type ChecklistBloco, type ChecklistItem } from '@/lib/checklist-data'
 import { findChecklistBloco, findChecklistItem, loadChecklistModelo } from '@/lib/checklist-runtime'
 import toast from 'react-hot-toast'
@@ -110,28 +109,30 @@ function erroColunaMetadata(error: any) {
 }
 
 async function inserirItemVistoria(payload: Record<string, any>) {
-  const { data, error } = await supabase.from('vistoria_itens').insert(payload).select('id').single()
-  if (!error) return data
-  if (!erroColunaMetadata(error)) throw error
-
-  const fallback = await supabase.from('vistoria_itens').insert(removerMetadata(payload)).select('id').single()
-  if (fallback.error) throw fallback.error
-  return fallback.data
+  const res = await fetch('/api/vistoria-itens', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.error || 'Erro ao salvar item')
+  return json.item || json
 }
 
 async function atualizarItemVistoria(id: string, payload: Record<string, any>) {
-  const { error } = await supabase.from('vistoria_itens').update(payload).eq('id', id)
-  if (!error) return
-  if (!erroColunaMetadata(error)) throw error
-
-  const fallback = await supabase.from('vistoria_itens').update(removerMetadata(payload)).eq('id', id)
-  if (fallback.error) throw fallback.error
+  const res = await fetch('/api/vistoria-itens', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, ...payload }),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.error || 'Erro ao atualizar item')
 }
 
 function resolverUrlFoto(storagePath?: string | null) {
   if (!storagePath) return ''
   if (/^(https?:|data:|\/)/.test(storagePath)) return storagePath
-  return supabase.storage.from('vistoria-fotos').getPublicUrl(storagePath).data.publicUrl
+  return `/${storagePath.replace(/^\/+/, '')}`
 }
 
 export default function ChecklistPage() {
@@ -165,27 +166,26 @@ export default function ChecklistPage() {
 
   async function init() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
+      const res = await fetch(`/api/vistoria-checklist/${vistoriaId}${baseVistoriaId ? `?base=${encodeURIComponent(baseVistoriaId)}` : ''}`)
+      if (res.status === 401) { router.push('/auth/login'); return }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao carregar checklist')
 
-      const { data: av } = await supabase.from('avaliadores').select('consultoria_id').eq('id', user.id).single()
+      const av = data.avaliador
       let checklistAtivo: ChecklistBloco[] = CHECKLIST
       if (av) {
         setConsultoriaId(av.consultoria_id)
-        checklistAtivo = await loadChecklistModelo(supabase, av.consultoria_id)
+        checklistAtivo = await loadChecklistModelo(av.consultoria_id)
         setChecklist(checklistAtivo)
       }
 
-      const { data: v } = await supabase
-        .from('vistorias')
-        .select('id, numero, data_vistoria, status, obra_id, obra:obras(id, name, empresa_cliente_id, empresa_cliente:empresas_clientes(name, cnpj))')
-        .eq('id', vistoriaId).single()
+      const v = data.vistoria
       if (!v) { toast.error('Vistoria não encontrada'); router.push('/dashboard'); return }
       setVistoria(v as any)
       setSecoesAbertas({ [focoBlocoId || checklistAtivo[0].id]: true })
 
       // Carrega empreiteiras da obra
-      await carregarEmpreiteiras((v as any).obra_id, (v as any).obra?.empresa_cliente?.name || 'Empresa')
+      montarEmpreiteiras(data.empreiteiras || [], (v as any).obra?.empresa_cliente?.name || 'Empresa')
 
       // Estado inicial dos itens
       const estado: Record<string, ItemState> = {}
@@ -196,17 +196,12 @@ export default function ChecklistPage() {
       })
 
       if (baseVistoriaId && baseVistoriaId !== vistoriaId) {
-        const [{ data: baseVistoria }, { data: baseItens }] = await Promise.all([
-          supabase.from('vistorias').select('numero').eq('id', baseVistoriaId).single(),
-          supabase.from('vistoria_itens').select('*').eq('vistoria_id', baseVistoriaId),
-        ])
+        const baseVistoria = data.base?.vistoria
+        const baseItens = data.base?.itens || []
 
         if (baseItens && baseItens.length > 0) {
           const baseItemDbIds = baseItens.map((s: any) => s.id)
-          const { data: baseVinculos } = await supabase
-            .from('vistoria_item_empresas')
-            .select('item_id, empresa_tipo, empreiteira_id')
-            .in('item_id', baseItemDbIds)
+          const baseVinculos = (data.base?.vinculos || []).filter((v: any) => baseItemDbIds.includes(v.item_id))
 
           baseItens.forEach((s: any) => {
             if (estado[s.item_id]) {
@@ -239,14 +234,11 @@ export default function ChecklistPage() {
       }
 
       // Carrega respostas salvas da vistoria atual. Elas prevalecem sobre a base da reavaliação.
-      const { data: saved } = await supabase.from('vistoria_itens').select('*').eq('vistoria_id', vistoriaId)
+      const saved = data.saved || []
       if (saved && saved.length > 0) {
         // Carrega vinculos de empresas por item
         const itemIds = saved.map((s: any) => s.id)
-        const { data: vinculos } = await supabase
-          .from('vistoria_item_empresas')
-          .select('item_id, empresa_tipo, empreiteira_id')
-          .in('item_id', itemIds)
+        const vinculos = (data.vinculos || []).filter((v: any) => itemIds.includes(v.item_id))
 
         saved.forEach((s: any) => {
           if (estado[s.item_id]) {
@@ -270,7 +262,7 @@ export default function ChecklistPage() {
 
       // Carrega fotos
       const dbItemToChecklistId = new Map((saved || []).map((s: any) => [s.id, s.item_id]))
-      const { data: savedFotos } = await supabase.from('vistoria_fotos').select('id, storage_path, item_id, vistoria_item_id').eq('vistoria_id', vistoriaId)
+      const savedFotos = data.fotos || []
       if (savedFotos && savedFotos.length > 0) {
         const fm: Record<string, any[]> = {}
         savedFotos.forEach((f: any) => {
@@ -286,9 +278,7 @@ export default function ChecklistPage() {
     finally { setLoading(false) }
   }
 
-  async function carregarEmpreiteiras(obraId: string, empresaNome: string) {
-    const { data } = await supabase.from('obra_empreiteiras').select('*').eq('obra_id', obraId).eq('ativa', true).order('created_at')
-    const lista = data || []
+  function montarEmpreiteiras(lista: Empreiteira[], empresaNome: string) {
     setEmpreiteiras(lista)
 
     const chipsArr: EmpresaChip[] = [
@@ -300,19 +290,31 @@ export default function ChecklistPage() {
     setChips(chipsArr)
   }
 
+  async function carregarEmpreiteiras(obraId: string, empresaNome: string) {
+    const res = await fetch(`/api/obra-empreiteiras?obraId=${encodeURIComponent(obraId)}`)
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || 'Erro ao carregar empreiteiras')
+    montarEmpreiteiras(json.empreiteiras || [], empresaNome)
+  }
+
   async function adicionarEmpreiteira() {
     if (!novaEmp.name.trim() || !novaEmp.cnpj.trim()) { toast.error('Nome e CNPJ obrigatórios'); return }
     if (!vistoria?.obra_id) return
     setSalvandoEmp(true)
     try {
-      const { data, error } = await supabase.from('obra_empreiteiras').insert({
-        obra_id: vistoria.obra_id,
-        consultoria_id: consultoriaId,
-        name: novaEmp.name.trim(),
-        cnpj: novaEmp.cnpj.trim(),
-        num_funcionarios: parseInt(novaEmp.num_funcionarios) || 0,
-      }).select().single()
-      if (error) throw error
+      const res = await fetch('/api/obra-empreiteiras', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          obra_id: vistoria.obra_id,
+          consultoria_id: consultoriaId,
+          name: novaEmp.name.trim(),
+          cnpj: novaEmp.cnpj.trim(),
+          num_funcionarios: parseInt(novaEmp.num_funcionarios) || 0,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao adicionar empreiteira')
       toast.success('Empreiteira adicionada!')
       setNovaEmp({ name: '', cnpj: '', num_funcionarios: '' })
       setModalEmpreiteira(false)
@@ -390,22 +392,34 @@ export default function ChecklistPage() {
 
         // Salva vinculos de empresas para NCs
         if (dbId) {
-          await supabase.from('vistoria_item_empresas').delete().eq('item_id', dbId)
+          await fetch('/api/vistoria-item-empresas', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id: dbId }),
+          })
         }
         if (dbId && it.resposta === 'NC') {
           for (const empId of it.empresas_selecionadas) {
-            await supabase.from('vistoria_item_empresas').insert({
-              vistoria_id: vistoriaId,
-              item_id: dbId,
-              empresa_tipo: empId === 'principal' ? 'principal' : 'empreiteira',
-              empreiteira_id: empId === 'principal' ? null : empId,
+            await fetch('/api/vistoria-item-empresas', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                vistoria_id: vistoriaId,
+                item_id: dbId,
+                empresa_tipo: empId === 'principal' ? 'principal' : 'empreiteira',
+                empreiteira_id: empId === 'principal' ? null : empId,
+              }),
             })
           }
         }
       }
 
       // Atualiza status da vistoria
-      await supabase.from('vistorias').update({ status: statusVistoria }).eq('id', vistoriaId)
+      await fetch(`/api/vistoria-checklist/${vistoriaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: statusVistoria }),
+      })
       if (!silent) toast.success(statusVistoria === 'incompleta' ? 'Progresso salvo! Vistoria marcada como incompleta.' : 'Salvo!')
       return true
     } catch (err: any) {
@@ -434,16 +448,21 @@ export default function ChecklistPage() {
     try {
       const ok = await salvarItens('concluida', true)
       if (!ok) { setConcluindo(false); return }
-      const { error } = await supabase.from('vistorias').update({
-        status: 'concluida',
-        total_itens: respondidos.length,
-        total_conformes: conformes,
-        total_nao_conformes: ncs,
-        total_na: na,
-        indice_conformidade: indice,
-        classificacao,
-      }).eq('id', vistoriaId)
-      if (error) throw error
+      const res = await fetch(`/api/vistoria-checklist/${vistoriaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'concluida',
+          total_itens: respondidos.length,
+          total_conformes: conformes,
+          total_nao_conformes: ncs,
+          total_na: na,
+          indice_conformidade: indice,
+          classificacao,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao concluir')
       toast.success('Vistoria concluída! Índice: ' + indice + '%')
       router.push('/dashboard/vistorias/' + vistoriaId + '/relatorio')
     } catch (err: any) { toast.error(err.message || 'Erro ao concluir') }
@@ -474,25 +493,20 @@ export default function ChecklistPage() {
       const tempUrl = URL.createObjectURL(file)
       setFotos(prev => ({ ...prev, [item_id]: [...(prev[item_id] || []), { url: tempUrl } as any] }))
       try {
-        const ext = file.name.split('.').pop()
-        const path = `vistorias/${vistoriaId}/${item_id}/${Date.now()}.${ext}`
-        const { error } = await supabase.storage.from('vistoria-fotos').upload(path, file, { contentType: file.type })
-        if (error) throw error
-        const { data: urlData } = supabase.storage.from('vistoria-fotos').getPublicUrl(path)
-        const { data: fotoData } = await supabase.from('vistoria_fotos').insert({
-          vistoria_id: vistoriaId,
-          organization_id: consultoriaId || null,
-          item_id: db_item_id,
-          vistoria_item_id: db_item_id,
-          storage_path: path,
-          filename: file.name,
-          mime_type: file.type,
-          tipo: 'nc',
-        }).select('id').single()
+        const form = new FormData()
+        form.append('file', file)
+        form.append('vistoria_id', vistoriaId)
+        form.append('organization_id', consultoriaId || '')
+        form.append('item_id', db_item_id || '')
+        form.append('vistoria_item_id', db_item_id || '')
+        form.append('tipo', 'nc')
+        const res = await fetch('/api/vistoria-fotos', { method: 'POST', body: form })
+        const fotoData = await res.json()
+        if (!res.ok) throw new Error(fotoData.error || 'Erro ao enviar foto')
         setFotos(prev => {
           const arr = [...(prev[item_id] || [])]
           const idx = arr.findIndex(f => f.url === tempUrl)
-          if (idx !== -1) arr[idx] = { url: urlData.publicUrl, storage_path: path, db_id: fotoData?.id }
+          if (idx !== -1) arr[idx] = { url: fotoData.url, storage_path: fotoData.storage_path, db_id: fotoData.id }
           return { ...prev, [item_id]: arr }
         })
       } catch { toast.error('Erro ao enviar foto'); setFotos(prev => ({ ...prev, [item_id]: (prev[item_id] || []).filter(f => f.url !== tempUrl) })) }
@@ -501,8 +515,13 @@ export default function ChecklistPage() {
   }
 
   async function removerFoto(item_id: string, url: string, db_id?: string, storage_path?: string) {
-    if (db_id) await supabase.from('vistoria_fotos').delete().eq('id', db_id)
-    if (storage_path) await supabase.storage.from('vistoria-fotos').remove([storage_path])
+    if (db_id) {
+      await fetch('/api/vistoria-fotos', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: db_id, storage_path }),
+      })
+    }
     setFotos(prev => ({ ...prev, [item_id]: (prev[item_id] || []).filter(f => f.url !== url) }))
   }
 

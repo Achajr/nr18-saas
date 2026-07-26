@@ -1,3 +1,0 @@
--- Schema criado via Supabase Dashboard
--- Banco já configurado em produção
--- Este arquivo serve como documentação e para recriar em novo ambiente

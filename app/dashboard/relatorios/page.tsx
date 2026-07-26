@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import {
   ArrowLeft, BarChart3, CalendarDays, ChevronRight,
   FileText, Loader2, Search
@@ -75,19 +74,10 @@ export default function DashboardRelatoriosPage() {
 
   async function loadData() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-
-      const { data } = await supabase
-        .from('vistorias')
-        .select('id, numero, data_vistoria, status, indice_conformidade, classificacao, total_nao_conformes, obra:obras(name, empresa_cliente:empresas_clientes(name))')
-        .eq('avaliador_id', user.id)
-        .order('created_at', { ascending: false })
-
-      setVistorias(((data || []) as unknown as RawVistoria[]).map(normalizeVistoria))
+      const res = await fetch('/api/vistorias?scope=mine')
+      if (!res.ok) { router.push('/auth/login'); return }
+      const data = await res.json()
+      setVistorias(data.vistorias || [])
     } finally {
       setLoading(false)
     }

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import {
   ArrowLeft, BarChart3, Building2, CalendarDays,
   ChevronRight, FileText, Loader2, Search, Users
@@ -80,40 +79,12 @@ export default function ConsultoriaRelatoriosPage() {
 
   async function loadData() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-
-      const { data: av } = await supabase
-        .from('avaliadores')
-        .select('consultoria_id, role, consultoria:consultorias(name)')
-        .eq('id', user.id)
-        .single()
-
-      if (!av) {
-        router.push('/auth/login')
-        return
-      }
-
-      if (av.role !== 'gestor') {
-        router.push('/dashboard/relatorios')
-        return
-      }
-
-      const consultoria = Array.isArray(av.consultoria)
-        ? av.consultoria[0]
-        : av.consultoria
-      setConsultoriaName(consultoria?.name || '')
-
-      const { data } = await supabase
-        .from('vistorias')
-        .select('id, numero, data_vistoria, status, indice_conformidade, classificacao, total_nao_conformes, obra:obras(name, empresa_cliente:empresas_clientes(name)), avaliador:avaliadores(full_name)')
-        .eq('consultoria_id', av.consultoria_id)
-        .order('created_at', { ascending: false })
-
-      setVistorias(((data || []) as unknown as RawVistoria[]).map(normalizeVistoria))
+      const res = await fetch('/api/vistorias?scope=consultoria')
+      if (res.status === 403) { router.push('/dashboard/relatorios'); return }
+      if (!res.ok) { router.push('/auth/login'); return }
+      const data = await res.json()
+      setConsultoriaName(data.consultoriaName || '')
+      setVistorias(data.vistorias || [])
     } finally {
       setLoading(false)
     }

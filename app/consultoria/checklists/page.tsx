@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -56,20 +55,15 @@ export default function ChecklistsPage() {
 
   async function loadData() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-
-      const { data: av } = await supabase
-        .from('avaliadores')
-        .select('consultoria_id, role')
-        .eq('id', user.id)
-        .single()
-
-      if (!av) { router.push('/auth/login'); return }
+      const res = await fetch('/api/nav')
+      if (res.status === 401) { router.push('/auth/login'); return }
+      const data = await res.json()
+      const av = data.user
+      if (!res.ok || !av) { router.push('/auth/login'); return }
       if (av.role !== 'gestor') { router.push('/dashboard'); return }
 
       setConsultoriaId(av.consultoria_id)
-      const modelo = await loadChecklistModelo(supabase, av.consultoria_id)
+      const modelo = await loadChecklistModelo(av.consultoria_id)
       setBlocos(modelo)
       setBlocoAtivo(modelo[0]?.id || '')
     } catch (err) {
@@ -175,14 +169,13 @@ export default function ChecklistsPage() {
   async function salvar() {
     setSaving(true)
     try {
-      const result = await saveChecklistModelo(supabase, consultoriaId, blocos)
+      const result = await saveChecklistModelo(consultoriaId, blocos)
       if (result.ok && !result.localOnly) {
         toast.success('Checklist salvo para a consultoria')
       } else if (result.ok) {
         toast.success('Checklist salvo localmente')
       } else {
         toast.success('Checklist salvo localmente')
-        toast.error('Para compartilhar com a equipe, aplique a migração do Supabase')
       }
     } finally {
       setSaving(false)

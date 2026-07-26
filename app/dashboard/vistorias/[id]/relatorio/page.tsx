@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import {
   CHECKLIST,
   EVIDENCIA_LABEL,
@@ -253,7 +252,7 @@ async function imageToPdfDataUrl(src: string): Promise<string | null> {
 function resolverUrlFoto(storagePath?: string | null) {
   if (!storagePath) return ''
   if (/^(https?:|data:|\/)/.test(storagePath)) return storagePath
-  return supabase.storage.from('vistoria-fotos').getPublicUrl(storagePath).data.publicUrl
+  return `/${storagePath.replace(/^\/+/, '')}`
 }
 
 function resolverMetaItem(item: ChecklistItem, nc: ItemVistoria) {
@@ -303,22 +302,21 @@ export default function RelatorioPage() {
 
   async function loadRelatorio() {
     try {
-      const { data: v } = await supabase
-        .from('vistorias')
-        .select('*, obra:obras(id, name, num_funcionarios, empresa_cliente:empresas_clientes(name, cnpj, cidade, uf)), avaliador:avaliadores(full_name, registro_mte, crea, consultoria:consultorias(name, cnpj, logo_url))')
-        .eq('id', vistoriaId).single()
+      const res = await fetch(`/api/vistoria-relatorio/${vistoriaId}`)
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload.error || 'Erro ao carregar relatório')
+      const v = payload.vistoria
       if (!v) { toast.error('Vistoria não encontrada'); return }
       setVistoria(v as any)
       setParecer(v.parecer_editado || v.parecer_ia || '')
       let checklistAtivo = CHECKLIST
       if ((v as any).consultoria_id) {
-        checklistAtivo = await loadChecklistModelo(supabase, (v as any).consultoria_id)
+        checklistAtivo = await loadChecklistModelo((v as any).consultoria_id)
         setChecklist(checklistAtivo)
       }
 
       // Carrega empreiteiras
-      const { data: emps } = await supabase.from('obra_empreiteiras').select('*').eq('obra_id', (v as any).obra?.id).eq('ativa', true)
-      const listaEmps = emps || []
+      const listaEmps = payload.empreiteiras || []
       setEmpreiteiras(listaEmps)
 
       // Monta lista de empresas do relatório
@@ -339,21 +337,17 @@ export default function RelatorioPage() {
       setEmpresaSelecionada(empresasList[0])
 
       // Carrega itens
-      const { data: itens } = await supabase.from('vistoria_itens').select('*').eq('vistoria_id', vistoriaId)
+      const itens = payload.itens || []
       if (!itens) { setLoading(false); return }
 
       // Carrega vínculos de empresas
-      const { data: vinculos } = await supabase.from('vistoria_item_empresas').select('*').eq('vistoria_id', vistoriaId)
+      const vinculos = payload.vinculos || []
 
       // Carrega fotos
       const ncsIds = itens.filter((i: any) => i.status === 'NC').map((i: any) => i.id)
       let fotosMap: Record<string, any[]> = {}
       if (ncsIds.length > 0) {
-        const idsSql = ncsIds.join(',')
-        const { data: fotos } = await supabase
-          .from('vistoria_fotos')
-          .select('item_id, vistoria_item_id, storage_path')
-          .or(`item_id.in.(${idsSql}),vistoria_item_id.in.(${idsSql})`)
+        const fotos = (payload.fotos || []).filter((f: any) => ncsIds.includes(f.item_id || f.vistoria_item_id))
         if (fotos) {
           fotos.forEach((f: any) => {
             const vinculoItemId = f.item_id || f.vistoria_item_id
@@ -442,7 +436,11 @@ export default function RelatorioPage() {
         setParecer(json.observacao)
         setParecerEditado(false)
         // Salva no banco
-        await supabase.from('vistorias').update({ parecer_ia: json.observacao }).eq('id', vistoriaId)
+        await fetch(`/api/vistoria-relatorio/${vistoriaId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parecer_ia: json.observacao }),
+        })
       }
     } catch { toast.error('Erro ao gerar parecer') }
     finally { setGerandoIA(false) }
@@ -451,7 +449,12 @@ export default function RelatorioPage() {
   async function salvarParecer() {
     setSalvandoParecer(true)
     try {
-      await supabase.from('vistorias').update({ parecer_editado: parecer }).eq('id', vistoriaId)
+      const res = await fetch(`/api/vistoria-relatorio/${vistoriaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parecer_editado: parecer }),
+      })
+      if (!res.ok) throw new Error('Erro ao salvar parecer')
       toast.success('Parecer salvo!')
       setParecerEditado(false)
     } catch { toast.error('Erro ao salvar parecer') }
@@ -958,34 +961,21 @@ export default function RelatorioPage() {
     if (!vistoria?.obra?.id) return
     setGerando(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-
-      const { data: av } = await supabase.from('avaliadores').select('consultoria_id').eq('id', user.id).single()
-      const consultoriaId = av?.consultoria_id || (vistoria as any).consultoria_id
-      const { count } = await supabase
-        .from('vistorias')
-        .select('*', { count: 'exact', head: true })
-        .eq('consultoria_id', consultoriaId)
-      const numero = `${String((count || 0) + 1).padStart(3, '0')}/${new Date().getFullYear()}`
       const bloco = blocoId ? checklist.find(b => b.id === blocoId) : null
 
-      const { data, error } = await supabase
-        .from('vistorias')
-        .insert({
-          obra_id: vistoria.obra.id,
-          consultoria_id: consultoriaId,
-          avaliador_id: user.id,
-          numero,
-          data_vistoria: new Date().toISOString().split('T')[0],
+      const res = await fetch('/api/vistoria-reavaliacao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vistoria_id: vistoriaId,
           clima: vistoria.clima || 'Bom / ensolarado',
           etapa_obra: bloco ? `Reavaliação - ${bloco.ref}` : vistoria.etapa_obra || '',
           observacoes_gerais: `Reavaliação baseada na vistoria ${vistoria.numero}${bloco ? ` - setor ${bloco.titulo}` : ''}.`,
-          status: 'em_andamento',
-        })
-        .select('id')
-        .single()
-      if (error) throw error
+        }),
+      })
+      const data = await res.json()
+      if (res.status === 401) { router.push('/auth/login'); return }
+      if (!res.ok) throw new Error(data.error || 'Erro ao criar reavaliação')
 
       toast.success('Reavaliação criada')
       router.push(`/dashboard/vistorias/${data.id}${blocoId ? `?foco=${blocoId}&base=${vistoriaId}` : `?base=${vistoriaId}`}`)

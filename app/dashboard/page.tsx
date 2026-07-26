@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import {
   Activity,
   ArrowRight,
@@ -47,35 +46,6 @@ interface Vistoria {
   obra: { name: string; empresa_cliente: { name: string } | null } | null
 }
 
-interface RawVistoria extends Omit<Vistoria, 'obra'> {
-  obra:
-    | Vistoria['obra']
-    | {
-        name: string
-        empresa_cliente: { name: string }[] | { name: string } | null
-      }[]
-}
-
-function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
-  if (Array.isArray(value)) return value[0] || null
-  return value || null
-}
-
-function normalizeVistoria(row: RawVistoria): Vistoria {
-  const obra = firstOrNull(row.obra)
-  const empresaCliente = firstOrNull(obra?.empresa_cliente)
-
-  return {
-    ...row,
-    obra: obra
-      ? {
-          name: obra.name,
-          empresa_cliente: empresaCliente ? { name: empresaCliente.name } : null,
-        }
-      : null,
-  }
-}
-
 export default function DashboardPage() {
   const router = useRouter()
   const [avaliador, setAvaliador] = useState<Avaliador | null>(null)
@@ -87,54 +57,12 @@ export default function DashboardPage() {
 
   async function loadData() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-
-      const { data: av } = await supabase
-        .from('avaliadores')
-        .select('*, consultoria:consultorias(name)')
-        .eq('id', user.id)
-        .single()
-
-      if (!av) { router.push('/auth/login'); return }
-      setAvaliador(av)
-
-      const cid = av.consultoria_id
-
-      // Stats
-      const [
-        { count: totalEmps },
-        { count: totalVist },
-      ] = await Promise.all([
-        supabase.from('empresas_clientes').select('*', { count: 'exact', head: true }).eq('consultoria_id', cid),
-        supabase.from('vistorias').select('*', { count: 'exact', head: true }).eq('avaliador_id', user.id),
-      ])
-
-      const inicioMes = new Date()
-      inicioMes.setDate(1)
-      inicioMes.setHours(0, 0, 0, 0)
-      const { count: totalMes } = await supabase
-        .from('vistorias')
-        .select('*', { count: 'exact', head: true })
-        .eq('avaliador_id', user.id)
-        .gte('created_at', inicioMes.toISOString())
-
-      setStats({
-        total_empresas: totalEmps || 0,
-        total_vistorias: totalVist || 0,
-        vistorias_mes: totalMes || 0,
-        ncs_abertas: 0,
-      })
-
-      // Últimas vistorias
-      const { data: vists } = await supabase
-        .from('vistorias')
-        .select('id, numero, data_vistoria, status, indice_conformidade, classificacao, obra:obras(name, empresa_cliente:empresas_clientes(name))')
-        .eq('avaliador_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5)
-      setVistorias(((vists || []) as unknown as RawVistoria[]).map(normalizeVistoria))
-
+      const res = await fetch('/api/dashboard')
+      if (!res.ok) { router.push('/auth/login'); return }
+      const data = await res.json()
+      setAvaliador(data.avaliador)
+      setStats(data.stats)
+      setVistorias(data.vistorias || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -143,7 +71,11 @@ export default function DashboardPage() {
   }
 
   async function handleLogout() {
-    await supabase.auth.signOut()
+    await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'logout' }),
+    })
     window.location.href = '/auth/login'
   }
 

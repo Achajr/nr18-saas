@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Building2, Users, FileText, ClipboardList,
   Plus, LogOut, ChevronLeft, ChevronRight, BarChart3, Palette,
@@ -60,30 +59,12 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
 
   async function loadUser() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setLoading(false); return }
-
-      // Verifica master
-      const { data: master } = await supabase.from('master_admins').select('id, full_name').eq('id', user.id).single()
-      if (master) { setUser({ ...master, email: user.email }); setPerfil('master'); setLoading(false); return }
-
-      // Verifica avaliador/gestor
-      const { data: av } = await supabase.from('avaliadores').select('*, consultoria:consultorias(name)').eq('id', user.id).single()
-      if (av) {
-        setUser({ ...av, email: user.email })
-        setPerfil(av.role === 'gestor' ? 'gestor' : 'avaliador')
-
-        // Conta vistorias pendentes
-        if (av.role !== 'gestor') {
-          const { count } = await supabase.from('vistorias').select('*', { count: 'exact', head: true })
-            .eq('avaliador_id', user.id).in('status', ['incompleta', 'em_andamento'])
-          setPendentes(count || 0)
-        } else {
-          const { count } = await supabase.from('vistorias').select('*', { count: 'exact', head: true })
-            .eq('consultoria_id', av.consultoria_id).in('status', ['incompleta', 'em_andamento'])
-          setPendentes(count || 0)
-        }
-      }
+      const res = await fetch('/api/nav')
+      if (!res.ok) { setLoading(false); return }
+      const data = await res.json()
+      setUser(data.user)
+      setPerfil(data.perfil)
+      setPendentes(data.pendentes || 0)
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -102,7 +83,11 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
-    await supabase.auth.signOut()
+    await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'logout' }),
+    })
     window.location.href = '/auth/login'
   }
 

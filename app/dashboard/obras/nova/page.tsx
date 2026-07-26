@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import { consultarCnpj, formatCnpj, onlyDigits } from '@/lib/cnpj'
 import toast from 'react-hot-toast'
 import {
@@ -69,39 +68,13 @@ export default function NovaVistoriaPage() {
 
   async function loadData() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-
-      setAvaliadorId(user.id)
-
-      const { data: av } = await supabase
-        .from('avaliadores')
-        .select('consultoria_id')
-        .eq('id', user.id)
-        .single()
-
-      if (!av) return
-      setConsultoriaId(av.consultoria_id)
-
-      // Gera número da vistoria automaticamente
-      const { count } = await supabase
-        .from('vistorias')
-        .select('*', { count: 'exact', head: true })
-        .eq('consultoria_id', av.consultoria_id)
-
-      const num = String((count || 0) + 1).padStart(3, '0')
-      const ano = new Date().getFullYear()
-      setDados(d => ({ ...d, numero: `${num}/${ano}` }))
-
-      // Empresas
-      const { data: emps } = await supabase
-        .from('empresas_clientes')
-        .select('id, name, cnpj, cidade, uf, grau_risco')
-        .eq('consultoria_id', av.consultoria_id)
-        .eq('active', true)
-        .order('name')
-
-      setEmpresas(emps || [])
+      const res = await fetch('/api/nova-vistoria')
+      if (!res.ok) { router.push('/auth/login'); return }
+      const data = await res.json()
+      setAvaliadorId(data.avaliadorId)
+      setConsultoriaId(data.consultoriaId)
+      setDados(d => ({ ...d, numero: data.numero }))
+      setEmpresas(data.empresas || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -110,13 +83,9 @@ export default function NovaVistoriaPage() {
   }
 
   async function loadObras(empresaId: string) {
-    const { data } = await supabase
-      .from('obras')
-      .select('id, name, etapa, status, empresa_cliente_id')
-      .eq('empresa_cliente_id', empresaId)
-      .neq('status', 'cancelada')
-      .order('created_at', { ascending: false })
-    setObras(data || [])
+    const res = await fetch(`/api/obras?empresaId=${encodeURIComponent(empresaId)}`)
+    const data = await res.json()
+    setObras(data.obras || [])
   }
 
   async function selectEmpresa(emp: Empresa) {
@@ -167,28 +136,15 @@ export default function NovaVistoriaPage() {
 
     setSaving(true)
     try {
-      const { data, error } = await supabase
-        .from('empresas_clientes')
-        .insert({
-          consultoria_id: consultoriaId,
-          name: nome,
-          cnpj: novaEmpresa.cnpj.trim() || null,
-          email: novaEmpresa.email || null,
-          phone: novaEmpresa.phone || null,
-          endereco: novaEmpresa.endereco || null,
-          cidade: novaEmpresa.cidade.trim() || null,
-          uf: novaEmpresa.uf.trim().toUpperCase() || null,
-          cep: novaEmpresa.cep || null,
-          cnae: novaEmpresa.cnae || null,
-          grau_risco: novaEmpresa.grau_risco || null,
-          active: true,
-          created_by: avaliadorId,
-        })
-        .select('id, name, cnpj, cidade, uf, grau_risco')
-        .single()
-      if (error) throw error
+      const res = await fetch('/api/empresas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ consultoriaId, ...novaEmpresa, name: nome }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) throw new Error(json.error || 'Erro ao cadastrar empresa')
 
-      const empresa = data as Empresa
+      const empresa = json.empresa as Empresa
       setEmpresas(prev => [empresa, ...prev.filter(e => e.id !== empresa.id)])
       setNovaEmpresa({ name: '', cnpj: '', email: '', phone: '', endereco: '', cidade: '', uf: '', cep: '', cnae: '', grau_risco: '' })
       setCriandoEmpresa(false)
@@ -206,22 +162,19 @@ export default function NovaVistoriaPage() {
     if (!selectedEmpresa) return
     setSaving(true)
     try {
-      const { data, error } = await supabase
-        .from('obras')
-        .insert({
+      const res = await fetch('/api/obras', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           name: novaObraNome,
-          consultoria_id: consultoriaId,
           empresa_cliente_id: selectedEmpresa.id,
-          avaliador_id: avaliadorId,
-          status: 'ativa',
-          empresa_nome: selectedEmpresa.name,
-          empresa_cnpj: selectedEmpresa.cnpj,
-        })
-        .select()
-        .single()
-      if (error) throw error
+          num_funcionarios: novaObraFuncionarios,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) throw new Error(json.error || 'Erro ao criar obra')
       toast.success('Obra criada!')
-      setSelectedObra(data)
+      setSelectedObra(json.obra)
       setNovaObraNome('')
       setCriandoObra(false)
       await loadObras(selectedEmpresa.id)
@@ -236,24 +189,22 @@ export default function NovaVistoriaPage() {
     if (!selectedObra) { toast.error('Selecione uma obra'); return }
     setSaving(true)
     try {
-      const { data, error } = await supabase
-        .from('vistorias')
-        .insert({
+      const res = await fetch('/api/vistorias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           obra_id: selectedObra.id,
-          consultoria_id: consultoriaId,
-          avaliador_id: avaliadorId,
           numero: dados.numero,
           data_vistoria: dados.data_vistoria,
           clima: dados.clima,
           etapa_obra: dados.etapa_obra || selectedObra.etapa || '',
           observacoes_gerais: dados.observacoes_gerais || null,
-          status: 'em_andamento',
-        })
-        .select()
-        .single()
-      if (error) throw error
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) throw new Error(json.error || 'Erro ao iniciar vistoria')
       toast.success('Vistoria iniciada!')
-      router.push(`/dashboard/vistorias/${data.id}`)
+      router.push(`/dashboard/vistorias/${json.vistoria.id}`)
     } catch (err: any) {
       toast.error(err.message || 'Erro ao iniciar vistoria')
     } finally {

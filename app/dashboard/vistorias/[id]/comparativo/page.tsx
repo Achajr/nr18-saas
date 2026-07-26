@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 import { CHECKLIST, type ChecklistBloco } from '@/lib/checklist-data'
 import { findChecklistItem, loadChecklistModelo } from '@/lib/checklist-runtime'
 import {
@@ -214,26 +213,19 @@ export default function ComparativoPage() {
 
   async function loadData() {
     try {
-      const { data: current } = await supabase
-        .from('vistorias')
-        .select('id, numero, data_vistoria, indice_conformidade, classificacao, total_nao_conformes, obra_id, consultoria_id, clima, etapa_obra, obra:obras(name, empresa_cliente:empresas_clientes(name))')
-        .eq('id', vistoriaId)
-        .single()
+      const res = await fetch(`/api/vistoria-comparativo/${vistoriaId}`)
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload.error || 'Erro ao carregar comparativo')
+      const current = payload.current
 
       if (!current) { toast.error('Vistoria não encontrada'); return }
       const currentRow = current as any as VistoriaResumo
       setAtual(currentRow)
 
-      const modelo = await loadChecklistModelo(supabase, currentRow.consultoria_id)
+      const modelo = await loadChecklistModelo(currentRow.consultoria_id)
       setChecklist(modelo)
 
-      const { data: allInspections } = await supabase
-        .from('vistorias')
-        .select('id, numero, data_vistoria, indice_conformidade, classificacao, total_nao_conformes, obra_id, consultoria_id, clima, etapa_obra, obra:obras(name, empresa_cliente:empresas_clientes(name))')
-        .eq('obra_id', currentRow.obra_id)
-        .in('status', ['concluida', 'assinada'])
-        .lte('data_vistoria', currentRow.data_vistoria)
-        .order('data_vistoria', { ascending: true })
+      const allInspections = payload.inspections || []
 
       const historyMap = new Map<string, VistoriaResumo>()
       ;((allInspections || []) as any as VistoriaResumo[]).forEach(v => historyMap.set(v.id, v))
@@ -250,10 +242,7 @@ export default function ComparativoPage() {
       const previousRow = currentIndex > 0 ? historyRows[currentIndex - 1] : undefined
       if (previousRow) setAnterior(previousRow)
 
-      const historyIds = historyRows.map(v => v.id)
-      const { data: allItems } = historyIds.length > 0
-        ? await supabase.from('vistoria_itens').select('id, vistoria_id, item_id, bloco_id, status, observacao, item_texto, item_ref, item_nivel, item_multa').in('vistoria_id', historyIds)
-        : { data: [] }
+      const allItems = payload.items || []
       const items = (allItems || []) as ItemRow[]
 
       setHistoricoItens(items)
@@ -432,22 +421,19 @@ export default function ComparativoPage() {
     if (!atual) return
     setCriando(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-      const { count } = await supabase.from('vistorias').select('*', { count: 'exact', head: true }).eq('consultoria_id', atual.consultoria_id)
-      const numero = `${String((count || 0) + 1).padStart(3, '0')}/${new Date().getFullYear()}`
-      const { data, error } = await supabase.from('vistorias').insert({
-        obra_id: atual.obra_id,
-        consultoria_id: atual.consultoria_id,
-        avaliador_id: user.id,
-        numero,
-        data_vistoria: new Date().toISOString().split('T')[0],
-        clima: atual.clima || 'Bom / ensolarado',
-        etapa_obra: atual.etapa_obra || '',
-        observacoes_gerais: `Reavaliação baseada na vistoria ${atual.numero}.`,
-        status: 'em_andamento',
-      }).select('id').single()
-      if (error) throw error
+      const res = await fetch('/api/vistoria-reavaliacao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vistoria_id: atual.id,
+          clima: atual.clima || 'Bom / ensolarado',
+          etapa_obra: atual.etapa_obra || '',
+          observacoes_gerais: `Reavaliação baseada na vistoria ${atual.numero}.`,
+        }),
+      })
+      const data = await res.json()
+      if (res.status === 401) { router.push('/auth/login'); return }
+      if (!res.ok) throw new Error(data.error || 'Erro ao criar reavaliação')
       router.push(`/dashboard/vistorias/${data.id}?base=${atual.id}`)
     } catch (err: any) {
       toast.error(err.message || 'Erro ao criar reavaliação')
