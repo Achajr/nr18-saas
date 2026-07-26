@@ -339,21 +339,34 @@ export default function ChecklistPage() {
   }
 
   function setResposta(item_id: string, resposta: Resposta) {
-    setItens(prev => ({ ...prev, [item_id]: { ...prev[item_id], resposta } }))
+    setItens(prev => {
+      const atual = prev[item_id]
+      const novaResposta = atual.resposta === resposta ? '' : resposta
+      return {
+        ...prev,
+        [item_id]: {
+          ...atual,
+          resposta: novaResposta,
+          observacao: novaResposta === 'NC' ? atual.observacao : '',
+        },
+      }
+    })
   }
 
-  function marcarBlocoNaoAplicavel(bloco: ChecklistBloco) {
+  function marcarBlocoResposta(bloco: ChecklistBloco, resposta: Exclude<Resposta, 'NC' | ''>) {
     setItens(prev => {
       const next = { ...prev }
+      const todosSelecionados = bloco.itens.every(item => next[item.id]?.resposta === resposta)
+      const novaResposta: Resposta = todosSelecionados ? '' : resposta
       bloco.itens.forEach(item => {
         const atual = next[item.id]
         if (atual) {
-          next[item.id] = { ...atual, resposta: 'NA', observacao: '' }
+          next[item.id] = { ...atual, resposta: novaResposta, observacao: '' }
         }
       })
       return next
     })
-    toast.success('Tópico marcado como não aplicável para esta obra.')
+    toast.success('Tópico atualizado.')
   }
 
   function setObservacao(item_id: string, obs: string) {
@@ -367,13 +380,13 @@ export default function ChecklistPage() {
   async function salvarItens(statusVistoria: string, silent = false) {
     setSaving(true)
     try {
-      const respondidos = Object.values(itens).filter(i => i.resposta !== '' && itemIdsVisiveis.has(i.item_id))
-      if (respondidos.length === 0) {
+      const itensParaSalvar = Object.values(itens).filter(i => itemIdsVisiveis.has(i.item_id) && (i.resposta !== '' || i.db_id))
+      if (itensParaSalvar.length === 0) {
         if (!silent) toast.error('Responda pelo menos um item')
         setSaving(false)
         return false
       }
-      for (const it of respondidos) {
+      for (const it of itensParaSalvar) {
         const item = findChecklistItem(checklist, it.item_id)
         const bloco = checklist.find(b => b.itens.some(i => i.id === it.item_id))
         if (!item) continue
@@ -382,7 +395,7 @@ export default function ChecklistPage() {
         const observacao = it.resposta === 'NC' ? (it.observacao || null) : null
         if (dbId) {
           await atualizarItemVistoria(dbId, { status: it.resposta, observacao, ...metadataPersistencia(item) })
-        } else {
+        } else if (it.resposta !== '') {
           const data = await inserirItemVistoria({
             vistoria_id: vistoriaId,
             item_id: it.item_id,
@@ -751,52 +764,62 @@ export default function ChecklistPage() {
         {checklistVisivel.map(bloco => {
           const itensBloco = bloco.itens.map(i => itens[i.id]).filter(Boolean)
           const respondidosBloco = itensBloco.filter(i => i.resposta !== '').length
+          const cBloco = itensBloco.filter(i => i.resposta === 'C').length
           const ncBloco = itensBloco.filter(i => i.resposta === 'NC').length
           const naBloco = itensBloco.filter(i => i.resposta === 'NA').length
+          const blocoTodoConforme = itensBloco.length > 0 && cBloco === itensBloco.length
           const blocoTodoNaoAplicavel = itensBloco.length > 0 && naBloco === itensBloco.length
           const aberto = secoesAbertas[bloco.id]
           return (
             <div key={bloco.id} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
-              <button onClick={() => toggleSecao(bloco.id)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-[var(--bg-elevated)]">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-mono text-[var(--brand)] flex-shrink-0">{bloco.ref}</span>
-                    <span className="font-semibold text-[var(--text-primary)] text-sm">{bloco.titulo.split('—').slice(1).join('—').trim() || bloco.titulo}</span>
+              <div className="flex w-full items-center gap-3 px-4 py-3.5 transition hover:bg-[var(--bg-elevated)]">
+                <button onClick={() => toggleSecao(bloco.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono text-[var(--brand)] flex-shrink-0">{bloco.ref}</span>
+                      <span className="font-semibold text-[var(--text-primary)] text-sm">{bloco.titulo.split('—').slice(1).join('—').trim() || bloco.titulo}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-xs text-[var(--text-muted)]">{respondidosBloco}/{bloco.itens.length} respondidos</span>
+                      {cBloco > 0 && <span className="text-xs text-[#3B6D11] bg-[#EAF3DE] px-2 py-0.5 rounded-full font-medium">{cBloco} C</span>}
+                      {ncBloco > 0 && <span className="text-xs text-[#A32D2D] bg-[#FCEBEB] px-2 py-0.5 rounded-full font-medium">{ncBloco} NC</span>}
+                      {naBloco > 0 && <span className="text-xs text-[#555552] bg-[#F1EFE8] px-2 py-0.5 rounded-full font-medium">{naBloco} N/A</span>}
+                      {respondidosBloco === bloco.itens.length && <span className="text-xs text-[#3B6D11] bg-[#EAF3DE] px-2 py-0.5 rounded-full font-medium">Concluído</span>}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-xs text-[var(--text-muted)]">{respondidosBloco}/{bloco.itens.length} respondidos</span>
-                    {ncBloco > 0 && <span className="text-xs text-[#A32D2D] bg-[#FCEBEB] px-2 py-0.5 rounded-full font-medium">{ncBloco} NC</span>}
-                    {naBloco > 0 && <span className="text-xs text-[#555552] bg-[#F1EFE8] px-2 py-0.5 rounded-full font-medium">{naBloco} N/A</span>}
-                    {respondidosBloco === bloco.itens.length && <span className="text-xs text-[#3B6D11] bg-[#EAF3DE] px-2 py-0.5 rounded-full font-medium">Concluído</span>}
-                  </div>
-                </div>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    marcarBlocoNaoAplicavel(bloco)
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      marcarBlocoNaoAplicavel(bloco)
+                  {aberto ? <ChevronUp size={16} className="text-[var(--text-muted)] flex-shrink-0" /> : <ChevronDown size={16} className="text-[var(--text-muted)] flex-shrink-0" />}
+                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => marcarBlocoResposta(bloco, 'C')}
+                    className={
+                      'flex min-h-9 items-center justify-center rounded-xl border px-3 py-2 text-xs font-black transition ' +
+                      (blocoTodoConforme
+                        ? 'border-[#3B6D11] bg-[#EAF3DE] text-[#3B6D11]'
+                        : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#3B6D11] hover:bg-[#EAF3DE] hover:text-[#3B6D11]')
                     }
-                  }}
-                  className={
-                    'flex min-h-9 shrink-0 items-center justify-center rounded-xl border px-3 py-2 text-xs font-black transition ' +
-                    (blocoTodoNaoAplicavel
-                      ? 'border-[#888780] bg-[#F1EFE8] text-[#555552]'
-                      : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#888780] hover:bg-[#F1EFE8] hover:text-[#555552]')
-                  }
-                  title="Marcar todo este tópico como não aplicável"
-                  aria-label="Marcar tópico como não aplicável"
-                >
-                  — N/A
-                </span>
-                {aberto ? <ChevronUp size={16} className="text-[var(--text-muted)] flex-shrink-0" /> : <ChevronDown size={16} className="text-[var(--text-muted)] flex-shrink-0" />}
-              </button>
+                    title="Marcar todo este tópico como conforme"
+                    aria-label="Marcar tópico como conforme"
+                  >
+                    ✓ Conforme
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => marcarBlocoResposta(bloco, 'NA')}
+                    className={
+                      'flex min-h-9 items-center justify-center rounded-xl border px-3 py-2 text-xs font-black transition ' +
+                      (blocoTodoNaoAplicavel
+                        ? 'border-[#888780] bg-[#F1EFE8] text-[#555552]'
+                        : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#888780] hover:bg-[#F1EFE8] hover:text-[#555552]')
+                    }
+                    title="Marcar todo este tópico como não aplicável"
+                    aria-label="Marcar tópico como não aplicável"
+                  >
+                    — N/A
+                  </button>
+                </div>
+              </div>
 
               {aberto && (
                 <div className="border-t border-[var(--border)] divide-y divide-[var(--border)]/60">
