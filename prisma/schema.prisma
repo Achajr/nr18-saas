@@ -34,6 +34,10 @@ model Consultoria {
   cnpj              String?
   email             String?
   phone             String?
+  endereco          String?
+  cidade            String?
+  uf                String?
+  cep               String?
   responsavel_nome  String?
   responsavel_email String?
   plan              String   @default("pro")

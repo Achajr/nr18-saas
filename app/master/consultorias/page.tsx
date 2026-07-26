@@ -1,11 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { fetchCnpjInfo, formatCnpj, formatPhone, getResponsavelFromQsa, onlyDigits } from '@/lib/cnpj'
+import { fetchCnpjInfo, formatCep, formatCnpj, formatEndereco, formatPhone, getResponsavelFromQsa, onlyDigits } from '@/lib/cnpj'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Plus, Building2, X, Loader2,
-  CheckCircle, AlertCircle, Users, FileText, Pencil, Image as ImageIcon
+  CheckCircle, AlertCircle, Pencil, Mail, MapPin, Phone
 } from 'lucide-react'
 import Image from 'next/image'
 
@@ -16,6 +16,10 @@ interface Consultoria {
   cnpj: string | null
   email: string | null
   phone: string | null
+  endereco: string | null
+  cidade: string | null
+  uf: string | null
+  cep: string | null
   responsavel_nome: string | null
   responsavel_email: string | null
   plan: string
@@ -62,11 +66,18 @@ const emptyForm = {
   cnpj: '',
   email: '',
   phone: '',
+  endereco: '',
+  cidade: '',
+  uf: '',
+  cep: '',
   responsavel_nome: '',
   responsavel_email: '',
   plan: 'pro',
+  active: 'true',
   observacoes: '',
 }
+
+const ESTADOS_UF = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
 
 export default function ConsultoriasPage() {
   const router = useRouter()
@@ -110,6 +121,10 @@ export default function ConsultoriasPage() {
         name: data.razao_social || f.name,
         email: email || f.email,
         phone: formatPhone(data.ddd_telefone_1) || formatPhone(data.ddd_telefone_2) || f.phone,
+        endereco: formatEndereco(data) || f.endereco,
+        cidade: data.municipio || f.cidade,
+        uf: data.uf || f.uf,
+        cep: formatCep(data.cep) || f.cep,
         responsavel_nome: getResponsavelFromQsa(data) || f.responsavel_nome,
         responsavel_email: email || f.responsavel_email,
       }))
@@ -142,9 +157,14 @@ export default function ConsultoriasPage() {
       cnpj: c.cnpj || '',
       email: c.email || '',
       phone: c.phone || '',
+      endereco: c.endereco || '',
+      cidade: c.cidade || '',
+      uf: c.uf || '',
+      cep: c.cep || '',
       responsavel_nome: c.responsavel_nome || '',
       responsavel_email: c.responsavel_email || '',
       plan: c.plan,
+      active: c.active ? 'true' : 'false',
       observacoes: '',
     })
     setShowModal(true)
@@ -152,6 +172,7 @@ export default function ConsultoriasPage() {
 
   async function handleSave() {
     if (!form.name) { toast.error('Nome da consultoria é obrigatório'); return }
+    if (!form.cnpj) { toast.error('CNPJ é obrigatório'); return }
     setSaving(true)
     try {
       const res = await fetch('/api/consultorias', {
@@ -160,8 +181,18 @@ export default function ConsultoriasPage() {
         body: JSON.stringify({
           id: editId || undefined,
           name: form.name,
+          cnpj: form.cnpj,
+          email: form.email,
+          phone: form.phone,
+          endereco: form.endereco,
+          cidade: form.cidade,
+          uf: form.uf,
+          cep: form.cep,
+          responsavel_nome: form.responsavel_nome,
+          responsavel_email: form.responsavel_email,
+          plan: form.plan,
           logoUrl: form.logo_url || null,
-          active: true
+          active: form.active === 'true'
         })
       })
 
@@ -260,6 +291,30 @@ export default function ConsultoriasPage() {
                         : <span className="text-xs px-2 py-0.5 rounded-full bg-red-900/40 text-red-400">Inativa</span>
                       }
                     </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                      {c.cnpj && <span className="text-xs text-[var(--text-muted)]">{c.cnpj}</span>}
+                      {c.cidade && (
+                        <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
+                          <MapPin size={10} /> {c.cidade}/{c.uf}
+                        </span>
+                      )}
+                      {c.email && (
+                        <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
+                          <Mail size={10} /> {c.email}
+                        </span>
+                      )}
+                      {c.phone && (
+                        <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
+                          <Phone size={10} /> {c.phone}
+                        </span>
+                      )}
+                    </div>
+                    {c.responsavel_nome && (
+                      <div className="mt-1.5">
+                        <span className="text-xs text-[var(--text-muted)]">Responsável: </span>
+                        <span className="text-xs text-[var(--text-secondary)]">{c.responsavel_nome}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Ações */}
@@ -306,6 +361,26 @@ export default function ConsultoriasPage() {
                 <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Dados da consultoria</p>
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">CNPJ *</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={form.cnpj}
+                        onChange={e => handleCnpjChange(e.target.value)}
+                        placeholder="00.000.000/0000-00"
+                        maxLength={18}
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition pr-10"
+                      />
+                      {buscandoCnpj && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 size={16} className="animate-spin text-[var(--brand)]" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)]">Digite o CNPJ para preencher razão social, endereço e responsável automaticamente.</p>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-medium text-[var(--text-secondary)]">Razão social *</label>
                     <input
                       type="text"
@@ -314,6 +389,29 @@ export default function ConsultoriasPage() {
                       placeholder="Consultoria SST Brasil Ltda"
                       className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                     />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="flex flex-col gap-1.5 flex-1">
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">Telefone</label>
+                      <input
+                        type="text"
+                        value={form.phone}
+                        onChange={e => update('phone', e.target.value)}
+                        placeholder="(27) 99999-0000"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5 flex-1">
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">E-mail</label>
+                      <input
+                        type="email"
+                        value={form.email}
+                        onChange={e => update('email', e.target.value)}
+                        placeholder="contato@consultoria.com.br"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-1.5">
@@ -326,6 +424,97 @@ export default function ConsultoriasPage() {
                       className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
                     />
                     <p className="text-xs text-[var(--text-muted)]">A logomarca será exibida no cabeçalho e nos relatórios PDF técnicos.</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Endereço</p>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">CEP</label>
+                      <input
+                        type="text"
+                        value={form.cep}
+                        onChange={e => update('cep', formatCep(e.target.value))}
+                        placeholder="00000-000"
+                        maxLength={9}
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">Endereço</label>
+                      <input
+                        type="text"
+                        value={form.endereco}
+                        onChange={e => update('endereco', e.target.value)}
+                        placeholder="Rua, nº, complemento"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
+                      />
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="flex flex-col gap-1.5 flex-[2]">
+                        <label className="text-xs font-medium text-[var(--text-secondary)]">Cidade</label>
+                        <input
+                          type="text"
+                          value={form.cidade}
+                          onChange={e => update('cidade', e.target.value)}
+                          placeholder="Vitória"
+                          className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5 flex-1">
+                        <label className="text-xs font-medium text-[var(--text-secondary)]">UF</label>
+                        <select
+                          value={form.uf}
+                          onChange={e => update('uf', e.target.value)}
+                          className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
+                        >
+                          <option value="">UF</option>
+                          {ESTADOS_UF.map(uf => (
+                            <option key={uf} value={uf}>{uf}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Responsável e status</p>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-[var(--text-secondary)]">Responsável</label>
+                      <input
+                        type="text"
+                        value={form.responsavel_nome}
+                        onChange={e => update('responsavel_nome', e.target.value)}
+                        placeholder="Nome do responsável"
+                        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
+                      />
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="flex flex-col gap-1.5 flex-1">
+                        <label className="text-xs font-medium text-[var(--text-secondary)]">E-mail do responsável</label>
+                        <input
+                          type="email"
+                          value={form.responsavel_email}
+                          onChange={e => update('responsavel_email', e.target.value)}
+                          placeholder="responsavel@consultoria.com.br"
+                          className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5 flex-1">
+                        <label className="text-xs font-medium text-[var(--text-secondary)]">Status</label>
+                        <select
+                          value={form.active}
+                          onChange={e => update('active', e.target.value)}
+                          className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
+                        >
+                          <option value="true">Ativa</option>
+                          <option value="false">Inativa</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
