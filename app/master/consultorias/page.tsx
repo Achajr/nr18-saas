@@ -200,6 +200,7 @@ export default function ConsultoriasPage() {
     if (editId && form.login_password && form.login_password.length < 6) { toast.error('Senha deve ter no mínimo 6 caracteres'); return }
     setSaving(true)
     try {
+      const selectedPlan = PLANOS.find(plano => plano.value === form.plan) || PLANOS[1]
       const payload = new FormData()
       payload.append('id', editId || '')
       payload.append('name', form.name)
@@ -215,6 +216,9 @@ export default function ConsultoriasPage() {
       payload.append('login_email', form.login_email)
       payload.append('login_password', form.login_password)
       payload.append('plan', form.plan)
+      payload.append('max_avaliadores', String(selectedPlan.max_avaliadores))
+      payload.append('max_empresas', String(selectedPlan.max_empresas))
+      payload.append('max_obras', String(selectedPlan.max_obras))
       payload.append('active', form.active)
       if (logoFile) payload.append('logo', logoFile)
 
@@ -512,6 +516,33 @@ export default function ConsultoriasPage() {
                         </select>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Plano da consultoria</p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {PLANOS.map(plano => {
+                      const selected = form.plan === plano.value
+                      return (
+                        <button
+                          key={plano.value}
+                          type="button"
+                          onClick={() => update('plan', plano.value)}
+                          className={`rounded-2xl border p-4 text-left transition ${
+                            selected
+                              ? 'border-[var(--brand)] bg-[var(--brand)]/10 shadow-sm'
+                              : 'border-[var(--border)] bg-[var(--bg-primary)] hover:border-[var(--brand)]/50'
+                          }`}
+                        >
+                          <div className={`text-sm font-black ${plano.color}`}>{plano.label}</div>
+                          <div className="mt-1 text-xs leading-5 text-[var(--text-muted)]">{plano.desc}</div>
+                          <div className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                            {plano.max_obras >= 9999 ? 'Obras ilimitadas' : `${plano.max_obras} obras`}
+                          </div>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 
