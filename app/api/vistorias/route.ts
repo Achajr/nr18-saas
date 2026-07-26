@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { getSessionUserIdFromRequest } from '@/lib/auth/session'
+import { gerarNumeroVistoriaPorObra } from '@/lib/vistoria-number'
 
 export async function GET(req: Request) {
   try {
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
     if (avaliador.role === 'gestor') return NextResponse.json({ error: 'A consultoria não realiza avaliações' }, { status: 403 })
 
     const body = await req.json()
-    if (!body.obra_id || !body.numero || !body.data_vistoria) {
+    if (!body.obra_id || !body.data_vistoria) {
       return NextResponse.json({ error: 'Dados obrigatórios faltando' }, { status: 400 })
     }
 
@@ -78,12 +79,14 @@ export async function POST(req: Request) {
     })
     if (!obra) return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 })
 
+    const numero = await gerarNumeroVistoriaPorObra(obra.id)
+
     const vistoria = await prisma.vistoria.create({
       data: {
         obraId: obra.id,
         consultoriaId: avaliador.consultoriaId,
         avaliadorId: avaliador.id,
-        numero: body.numero,
+        numero,
         data_vistoria: body.data_vistoria,
         clima: body.clima || null,
         etapa_obra: body.etapa_obra || obra.etapa || null,

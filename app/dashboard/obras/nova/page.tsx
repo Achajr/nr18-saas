@@ -36,6 +36,7 @@ export default function NovaVistoriaPage() {
   const [avaliadorId, setAvaliadorId] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [loadingNumero, setLoadingNumero] = useState(false)
   const [search, setSearch] = useState('')
   const [criandoEmpresa, setCriandoEmpresa] = useState(false)
   const [buscandoCnpj, setBuscandoCnpj] = useState(false)
@@ -73,7 +74,6 @@ export default function NovaVistoriaPage() {
       const data = await res.json()
       setAvaliadorId(data.avaliadorId)
       setConsultoriaId(data.consultoriaId)
-      setDados(d => ({ ...d, numero: data.numero }))
       setEmpresas(data.empresas || [])
     } catch (err) {
       console.error(err)
@@ -91,8 +91,26 @@ export default function NovaVistoriaPage() {
   async function selectEmpresa(emp: Empresa) {
     setSelectedEmpresa(emp)
     setSelectedObra(null)
+    setDados(d => ({ ...d, numero: '' }))
     await loadObras(emp.id)
     setStep('obra')
+  }
+
+  async function selectObra(obra: Obra) {
+    setSelectedObra(obra)
+    setStep('dados')
+    setLoadingNumero(true)
+    setDados(d => ({ ...d, numero: '' }))
+    try {
+      const res = await fetch(`/api/nova-vistoria?obraId=${encodeURIComponent(obra.id)}`)
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || 'Erro ao gerar número da vistoria')
+      setDados(d => ({ ...d, numero: data.numero || '' }))
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao gerar número da vistoria')
+    } finally {
+      setLoadingNumero(false)
+    }
   }
 
   async function buscarCnpjEmpresa(cnpj: string) {
@@ -454,7 +472,7 @@ export default function NovaVistoriaPage() {
               {obras.map(o => (
                 <button
                   key={o.id}
-                  onClick={() => { setSelectedObra(o); setStep('dados') }}
+                  onClick={() => selectObra(o)}
                   className={`bg-[var(--bg-surface)] border rounded-2xl p-4 flex items-center gap-3 transition text-left w-full ${
                     selectedObra?.id === o.id
                       ? 'border-[var(--brand)] bg-[var(--brand)]/5'
@@ -540,13 +558,14 @@ export default function NovaVistoriaPage() {
 
               <div className="flex gap-3">
                 <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-xs font-medium text-[var(--text-secondary)]">Nº da vistoria</label>
+                  <label className="text-xs font-medium text-[var(--text-secondary)]">Nº da vistoria nesta obra</label>
                   <input
                     type="text"
-                    value={dados.numero}
-                    onChange={e => setDados(d => ({ ...d, numero: e.target.value }))}
-                    className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--brand)] transition"
+                    value={loadingNumero ? 'Calculando...' : dados.numero}
+                    readOnly
+                    className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm outline-none"
                   />
+                  <p className="text-[11px] text-[var(--text-muted)]">Sequência automática apenas para a obra selecionada.</p>
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Data</label>
