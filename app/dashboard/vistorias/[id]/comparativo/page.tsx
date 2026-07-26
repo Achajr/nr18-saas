@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { CHECKLIST, type ChecklistBloco } from '@/lib/checklist-data'
+import { CHECKLIST, corrigirTextoTecnico, type ChecklistBloco } from '@/lib/checklist-data'
 import { findChecklistItem, loadChecklistModelo } from '@/lib/checklist-runtime'
 import {
   ArrowLeft,
@@ -173,7 +173,7 @@ function nivelPeso(nivel?: string | null) {
 function itemMeta(checklist: ChecklistBloco[], item?: ItemRow) {
   const base = item ? findChecklistItem(checklist, item.item_id) : null
   return {
-    texto: base?.t || item?.item_texto || 'Item avaliado',
+    texto: corrigirTextoTecnico(base?.t || item?.item_texto || 'Item avaliado'),
     ref: base?.ref || item?.item_ref || '',
     nivel: base?.nivel || item?.item_nivel || 'medio',
     multa: base?.multa || item?.item_multa || 'i2',

@@ -33,7 +33,7 @@ interface RawVistoria extends Omit<Vistoria, 'obra'> {
 const statusConfig: Record<string, { label: string; color: string }> = {
   incompleta: { label: 'Incompleta', color: 'bg-orange-900/40 text-orange-300' },
   em_andamento: { label: 'Em andamento', color: 'bg-amber-900/40 text-amber-300' },
-  concluida: { label: 'Concluida', color: 'bg-green-900/40 text-green-300' },
+  concluida: { label: 'Concluída', color: 'bg-green-900/40 text-green-300' },
   assinada: { label: 'Assinada', color: 'bg-blue-900/40 text-blue-300' },
 }
 
@@ -126,8 +126,8 @@ export default function DashboardRelatoriosPage() {
           {[
             { label: 'Total', value: stats.total, icon: FileText, color: 'text-blue-400' },
             { label: 'Abertas', value: stats.abertas, icon: CalendarDays, color: 'text-amber-400' },
-            { label: 'Concluidas', value: stats.concluidas, icon: BarChart3, color: 'text-green-400' },
-            { label: 'Media', value: stats.media ? `${stats.media}%` : '-', icon: BarChart3, color: 'text-purple-400' },
+            { label: 'Concluídas', value: stats.concluidas, icon: BarChart3, color: 'text-green-400' },
+            { label: 'Média', value: stats.media ? `${stats.media}%` : '-', icon: BarChart3, color: 'text-purple-400' },
           ].map((item) => (
             <div key={item.label} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-4">
               <item.icon size={17} className={item.color} />
@@ -144,7 +144,7 @@ export default function DashboardRelatoriosPage() {
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por empresa ou numero..."
+              placeholder="Buscar por empresa ou número..."
               className="w-full pl-9 pr-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition"
             />
           </div>
@@ -156,7 +156,7 @@ export default function DashboardRelatoriosPage() {
             <option value="todos">Todos os status</option>
             <option value="em_andamento">Em andamento</option>
             <option value="incompleta">Incompleta</option>
-            <option value="concluida">Concluida</option>
+            <option value="concluida">Concluída</option>
             <option value="assinada">Assinada</option>
           </select>
         </div>

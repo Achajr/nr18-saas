@@ -1,4 +1,11 @@
-import { CHECKLIST, type ChecklistBloco, type ChecklistItem, type GrauMulta, type NivelRisco } from './checklist-data'
+import {
+  CHECKLIST,
+  corrigirTextoTecnico,
+  type ChecklistBloco,
+  type ChecklistItem,
+  type GrauMulta,
+  type NivelRisco,
+} from './checklist-data'
 
 const STORAGE_PREFIX = 'nr18-checklist-modelo-v1'
 const NIVEIS: NivelRisco[] = ['grave', 'alto', 'medio', 'baixo']
@@ -28,19 +35,19 @@ export function normalizeChecklist(value: unknown): ChecklistBloco[] {
           const multa = MULTAS.includes(rawItem?.multa) ? rawItem.multa : 'i2'
           return {
             id: String(rawItem?.id || `${blocoId}-${itemIndex + 1}`).trim(),
-            t: String(rawItem?.t || '').trim(),
+            t: corrigirTextoTecnico(String(rawItem?.t || '').trim()),
             ref: String(rawItem?.ref || '').trim(),
             nivel,
-            perigo: String(rawItem?.perigo || 'Geral').trim(),
+            perigo: corrigirTextoTecnico(String(rawItem?.perigo || 'Geral').trim()),
             multa,
-            nr: String(rawItem?.nr || '').trim(),
+            nr: corrigirTextoTecnico(String(rawItem?.nr || '').trim()),
           }
         })
         .filter((item: ChecklistItem) => item.id && item.t)
 
       return {
         id: blocoId,
-        titulo: String(rawBloco?.titulo || `Setor ${blocoIndex + 1}`).trim(),
+        titulo: corrigirTextoTecnico(String(rawBloco?.titulo || `Setor ${blocoIndex + 1}`).trim()),
         ref: String(rawBloco?.ref || '').trim(),
         itens,
       }

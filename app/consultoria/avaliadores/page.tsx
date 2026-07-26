@@ -31,8 +31,8 @@ const emptyForm = {
 const roleLabel: Record<string, string> = {
   gestor: 'Gestor',
   avaliador: 'Avaliador',
-  estagiario: 'Estagiario',
-  viewer: 'Visualizacao',
+  estagiario: 'Estagiário',
+  viewer: 'Visualização',
 }
 
 const roleColor: Record<string, string> = {

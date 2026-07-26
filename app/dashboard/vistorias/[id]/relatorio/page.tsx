@@ -7,6 +7,7 @@ import {
   ETAPA_LABEL,
   MULTA_INFO,
   VERIFICACAO_LABEL,
+  corrigirTextoTecnico,
   getChecklistItemMeta,
   type ChecklistBloco,
   type ChecklistItem,
@@ -144,7 +145,7 @@ function dataBR(data?: string | null) {
 }
 
 function textoTecnico(value?: string | null) {
-  return String(value || '')
+  return corrigirTextoTecnico(value)
     .replace(/\bSatisfatorio\b/g, 'Satisfatório')
     .replace(/\bInsatisfatorio\b/g, 'Insatisfatório')
     .replace(/\bCritico\b/g, 'Crítico')
