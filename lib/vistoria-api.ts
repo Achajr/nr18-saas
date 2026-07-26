@@ -15,6 +15,13 @@ export async function requireVistoriaAccess(req: Request, vistoriaId: string) {
   return { avaliador, vistoria }
 }
 
+export async function requireVistoriaWriteAccess(req: Request, vistoriaId: string) {
+  const access = await requireVistoriaAccess(req, vistoriaId)
+  if ('error' in access) return access
+  if (access.avaliador.role === 'gestor') return { error: 'A consultoria possui acesso somente para visualização da vistoria', status: 403 as const }
+  return access
+}
+
 export function vistoriaJson(v: any) {
   if (!v) return null
   return {

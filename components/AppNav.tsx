@@ -128,6 +128,7 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
 
   const initials = user?.full_name?.split(' ').slice(0,2).map((n: string) => n[0]).join('').toUpperCase() || '??'
   const consultoriaName = user?.consultoria?.name || (perfil === 'master' ? 'Master Admin' : '')
+  const consultoriaLogoUrl = user?.consultoria?.logoUrl || null
 
   if (isPublic) return <>{children}</>
 
@@ -156,7 +157,8 @@ export default function AppNav({ children }: { children: React.ReactNode }) {
           <BrandLogo
             size="sm"
             markOnly={collapsed}
-            subtitle={consultoriaName || ''}
+            consultoriaLogoUrl={!collapsed && perfil === 'gestor' ? consultoriaLogoUrl : null}
+            subtitle={perfil === 'master' ? consultoriaName : ''}
           />
         </div>
 

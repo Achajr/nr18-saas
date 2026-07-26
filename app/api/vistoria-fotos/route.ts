@@ -3,7 +3,7 @@ import { mkdir, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { fotoJson, requireVistoriaAccess } from '@/lib/vistoria-api'
+import { fotoJson, requireVistoriaWriteAccess } from '@/lib/vistoria-api'
 
 function safeSegment(value: string) {
   return value.replace(/[^a-zA-Z0-9_-]/g, '-')
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const itemId = String(form.get('item_id') || '') || null
     const vistoriaItemId = String(form.get('vistoria_item_id') || '') || null
     if (!(file instanceof File) || !vistoriaId) return NextResponse.json({ error: 'Arquivo obrigatório' }, { status: 400 })
-    const access = await requireVistoriaAccess(req, vistoriaId)
+    const access = await requireVistoriaWriteAccess(req, vistoriaId)
     if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status })
 
     const ext = safeSegment((file.name.split('.').pop() || 'jpg').slice(0, 12))
@@ -40,7 +40,7 @@ export async function DELETE(req: Request) {
     if (!body.id) return NextResponse.json({ error: 'Foto obrigatória' }, { status: 400 })
     const foto = await prisma.vistoriaFoto.findUnique({ where: { id: body.id } })
     if (!foto) return NextResponse.json({ ok: true })
-    const access = await requireVistoriaAccess(req, foto.vistoriaId)
+    const access = await requireVistoriaWriteAccess(req, foto.vistoriaId)
     if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status })
     await prisma.vistoriaFoto.delete({ where: { id: foto.id } })
     if (foto.storagePath.startsWith('/uploads/vistorias/')) {

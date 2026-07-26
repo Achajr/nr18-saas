@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { requireVistoriaAccess } from '@/lib/vistoria-api'
+import { requireVistoriaWriteAccess } from '@/lib/vistoria-api'
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const access = await requireVistoriaAccess(req, body.vistoria_id)
+    const access = await requireVistoriaWriteAccess(req, body.vistoria_id)
     if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status })
     const total = await prisma.vistoria.count({ where: { consultoriaId: access.vistoria.consultoriaId } })
     const numero = `${String(total + 1).padStart(3, '0')}/${new Date().getFullYear()}`

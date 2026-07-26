@@ -66,6 +66,7 @@ export async function POST(req: Request) {
 
     const avaliador = await prisma.avaliador.findUnique({ where: { id: userId } })
     if (!avaliador?.consultoriaId) return NextResponse.json({ error: 'Perfil não encontrado' }, { status: 404 })
+    if (avaliador.role === 'gestor') return NextResponse.json({ error: 'A consultoria não realiza avaliações' }, { status: 403 })
 
     const body = await req.json()
     if (!body.obra_id || !body.numero || !body.data_vistoria) {

@@ -8,7 +8,7 @@ import {
   ChevronRight, TrendingUp, AlertCircle, CheckCircle2,
   Clock, XCircle, HardHat, BarChart3, AlertTriangle
 } from 'lucide-react'
-import BrandLogo from '@/components/BrandLogo'
+import Image from 'next/image'
 
 interface Stats {
   total_avaliadores: number
@@ -123,10 +123,25 @@ export default function ConsultoriaPage() {
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg-surface)]/90 px-4 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandLogo size="sm" title="NR18 Check" subtitle={consultoria?.name || 'Painel da consultoria'} />
+          <div className="hidden flex-1 lg:block" />
+          <div className="flex min-w-0 flex-1 items-center justify-start gap-4 lg:justify-center">
+            <div className="relative h-14 w-32 shrink-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.10)]">
+              {consultoria?.logoUrl ? (
+                <Image src={consultoria.logoUrl} alt={consultoria?.name || 'Consultoria'} fill className="object-contain p-2" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xl font-black text-[var(--brand)]">
+                  {(consultoria?.name || 'C').slice(0, 2).toUpperCase()}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--brand)]">Painel da consultoria</div>
+              <h1 className="truncate text-xl font-black tracking-tight text-[var(--text-primary)] sm:text-2xl lg:text-3xl">
+                {consultoria?.name || 'Consultoria'}
+              </h1>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-1 items-center justify-end gap-3">
             <button
               onClick={() => router.push('/consultoria/empresas')}
               className="hidden rounded-2xl border border-[var(--border)] px-4 py-2.5 text-sm font-black text-[var(--text-secondary)] transition hover:border-[var(--brand)]/50 hover:bg-[var(--brand-muted)] hover:text-[var(--brand)] sm:inline-flex"
@@ -166,14 +181,14 @@ export default function ConsultoriaPage() {
                     onClick={() => router.push('/consultoria/empresas')}
                     className="inline-flex items-center justify-center gap-3 rounded-2xl bg-white px-5 py-4 font-black text-slate-950 shadow-xl transition hover:bg-blue-50"
                   >
-                    Gerenciar empresas
+                    Administrar empresas
                     <ArrowRight size={18} />
                   </button>
                   <button
                     onClick={() => router.push('/consultoria/relatorios')}
                     className="inline-flex items-center justify-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-5 py-4 font-bold text-white transition hover:bg-white/16"
                   >
-                    Ver relatórios
+                    Visualizar relatórios
                     <FileText size={18} />
                   </button>
                 </div>
@@ -280,7 +295,7 @@ export default function ConsultoriaPage() {
             </div>
             <div className="divide-y divide-[var(--border)]">
               {incompletas.map(v => (
-                <div key={v.id} onClick={() => router.push('/dashboard/vistorias/' + v.id)}
+                <div key={v.id} onClick={() => router.push('/dashboard/vistorias/' + v.id + '/relatorio')}
                   className="grid cursor-pointer gap-3 px-5 py-4 transition hover:bg-[var(--bg-elevated)] sm:grid-cols-[1fr_auto] sm:items-center">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

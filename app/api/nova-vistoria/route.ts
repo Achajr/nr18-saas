@@ -9,6 +9,7 @@ export async function GET(req: Request) {
 
     const avaliador = await prisma.avaliador.findUnique({ where: { id: userId } })
     if (!avaliador?.consultoriaId) return NextResponse.json({ error: 'Perfil não encontrado' }, { status: 404 })
+    if (avaliador.role === 'gestor') return NextResponse.json({ error: 'A consultoria não realiza avaliações' }, { status: 403 })
 
     const [totalVistorias, empresas] = await Promise.all([
       prisma.vistoria.count({ where: { consultoriaId: avaliador.consultoriaId } }),

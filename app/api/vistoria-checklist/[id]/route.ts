@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { buildVistoriaWithObra, empreiteiraJson, fotoJson, itemJson, requireVistoriaAccess, vinculoJson, vistoriaJson } from '@/lib/vistoria-api'
+import { buildVistoriaWithObra, empreiteiraJson, fotoJson, itemJson, requireVistoriaAccess, requireVistoriaWriteAccess, vinculoJson, vistoriaJson } from '@/lib/vistoria-api'
 
 export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params
-    const access = await requireVistoriaAccess(req, id)
+    const access = await requireVistoriaWriteAccess(req, id)
     if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status })
     const url = new URL(req.url)
     const baseId = url.searchParams.get('base')

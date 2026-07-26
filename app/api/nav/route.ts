@@ -14,7 +14,7 @@ export async function GET(req: Request) {
     if (master) {
       return NextResponse.json({
         perfil: 'master',
-        user: { id: master.id, full_name: master.fullName, email: user.email, consultoria: { name: 'Master Admin' } },
+        user: { id: master.id, full_name: master.fullName, email: user.email, consultoria: { name: 'Master Admin', logoUrl: null } },
         pendentes: 0,
       })
     }
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
         email: user.email,
         role: avaliador.role,
         consultoria_id: avaliador.consultoriaId,
-        consultoria: consultoria ? { name: consultoria.name } : null,
+        consultoria: consultoria ? { name: consultoria.name, logoUrl: consultoria.logoUrl } : null,
       },
       pendentes,
     })
