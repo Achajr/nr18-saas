@@ -67,7 +67,7 @@ interface VistoriaCompleta {
   total_nao_conformes: number; total_na: number; indice_conformidade: number; classificacao: string
   parecer_ia: string | null; parecer_editado: string | null
   obra: { id: string; name: string; num_funcionarios: number; empresa_cliente: { name: string; cnpj: string | null; cidade: string | null; uf: string | null } | null } | null
-  avaliador: { full_name: string; registro_mte: string | null; crea: string | null; consultoria: { name: string; cnpj: string | null } | null } | null
+  avaliador: { full_name: string; registro_mte: string | null; crea: string | null; consultoria: { name: string; cnpj: string | null; logoUrl?: string | null } | null } | null
 }
 interface ItemVistoria {
   id: string; item_id: string; bloco_id: string; status: string; observacao: string | null
@@ -248,6 +248,13 @@ async function imageToPdfDataUrl(src: string): Promise<string | null> {
   } catch {
     return null
   }
+}
+
+function pdfImageFormat(dataUrl: string) {
+  const mime = dataUrl.match(/^data:image\/([a-zA-Z0-9+.-]+);/)?.[1]?.toLowerCase()
+  if (mime === 'jpg' || mime === 'jpeg') return 'JPEG'
+  if (mime === 'webp') return 'WEBP'
+  return 'PNG'
 }
 
 function resolverUrlFoto(storagePath?: string | null) {
@@ -481,7 +488,10 @@ export default function RelatorioPage() {
       let secao = 1
       const naoInformado = 'Não informado'
 
-      const logoData = await imageToPdfDataUrl('/branding/login-logo-login.png')
+      const systemLogoData = await imageToPdfDataUrl('/branding/login-logo-login.png')
+      const consultoriaLogoData = vistoria.avaliador?.consultoria?.logoUrl
+        ? await imageToPdfDataUrl(vistoria.avaliador.consultoria.logoUrl)
+        : null
       const ncs = ncsEmpresa
       const itensTecnicos: ItemTecnico[] = ncs.map(nc => {
         const baseItem = findChecklistItem(checklist, nc.item_id)
@@ -547,12 +557,22 @@ export default function RelatorioPage() {
         color(hex, 'text')
       }
 
+      const addPdfImage = (dataUrl: string, x: number, yy: number, w: number, h: number) => {
+        try {
+          doc.addImage(dataUrl, pdfImageFormat(dataUrl), x, yy, w, h)
+        } catch {
+          try { doc.addImage(dataUrl, 'PNG', x, yy, w, h) } catch {}
+        }
+      }
+
       const addHeader = (title = 'Relatório Técnico NR-18') => {
         const w = currentPageW()
         color('#FFFFFF', 'fill')
         doc.rect(0, 0, w, 35, 'F')
-        if (logoData) {
-          try { doc.addImage(logoData, 'PNG', margin, 7, 38, 17) } catch {}
+        if (consultoriaLogoData) {
+          addPdfImage(consultoriaLogoData, margin, 6, 42, 20)
+        } else {
+          text(vistoria.avaliador?.consultoria?.name || 'Consultoria', margin, 16, 10, PDF.brandDark, 'bold')
         }
         text(title, w - margin - 64, 14, 9.5, PDF.brandDark, 'bold')
         text(`Vistoria ${vistoriaPdf.numero}`, w - margin - 64, 20, 7.5, PDF.muted)
@@ -569,7 +589,11 @@ export default function RelatorioPage() {
           const h = currentPageH()
           color(PDF.line, 'draw')
           doc.line(margin, h - 14, w - margin, h - 14)
-          text('NR18 Check - Documento técnico gerado eletronicamente', margin, h - 8, 7, PDF.muted)
+          if (systemLogoData) {
+            addPdfImage(systemLogoData, margin, h - 12, 28, 10)
+          } else {
+            text('NR18 Check', margin, h - 8, 7, PDF.muted, 'bold')
+          }
           text(`Página ${i} de ${total}`, w - margin, h - 8, 7, PDF.muted, 'normal', { align: 'right' })
         }
       }
@@ -700,8 +724,10 @@ export default function RelatorioPage() {
       // CAPA
       color('#FFFFFF', 'fill')
       doc.rect(0, 0, pageW, pageH, 'F')
-      if (logoData) {
-        try { doc.addImage(logoData, 'PNG', margin, 16, 62, 28) } catch {}
+      if (consultoriaLogoData) {
+        addPdfImage(consultoriaLogoData, margin, 15, 62, 28)
+      } else {
+        text(vistoria.avaliador?.consultoria?.name || 'Consultoria', margin, 30, 16, PDF.brandDark, 'bold')
       }
       color(PDF.line, 'draw')
       doc.line(margin, 54, pageW - margin, 54)
@@ -907,8 +933,10 @@ export default function RelatorioPage() {
           const w = currentPageW()
           color('#FFFFFF', 'fill')
           doc.rect(0, 0, w, 32, 'F')
-          if (logoData) {
-            try { doc.addImage(logoData, 'PNG', margin, 7, 36, 16) } catch {}
+          if (consultoriaLogoData) {
+            addPdfImage(consultoriaLogoData, margin, 6, 38, 18)
+          } else {
+            text(vistoria.avaliador?.consultoria?.name || 'Consultoria', margin, 15, 9, PDF.brandDark, 'bold')
           }
           text('ANEXO I - Plano de Ação 5W2H', w / 2, 15, 12, PDF.brandDark, 'bold', { align: 'center' })
           text(`${empresaSelecionada.label} | Vistoria ${vistoriaPdf.numero}`, w / 2, 22, 7.5, PDF.muted, 'normal', { align: 'center' })
