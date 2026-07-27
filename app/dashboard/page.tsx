@@ -59,16 +59,54 @@ const FRASES_MOTIVACIONAIS = [
   'Boas decisões técnicas hoje evitam riscos amanhã.',
 ]
 
+const SEGUNDOS_NOMES_COMPOSTOS = new Set([
+  'paula',
+  'clara',
+  'luiza',
+  'luisa',
+  'julia',
+  'júlia',
+  'carolina',
+  'beatriz',
+  'eduarda',
+  'victoria',
+  'vitória',
+  'carlos',
+  'eduardo',
+  'miguel',
+  'pedro',
+  'lucas',
+  'gabriel',
+  'henrique',
+  'felipe',
+  'vitor',
+  'victor',
+  'gustavo',
+  'augusto',
+  'luiz',
+  'luis',
+  'paulo',
+])
+
+function capitalizarNome(parte: string) {
+  const normalizada = parte.toLocaleLowerCase('pt-BR')
+  return normalizada.charAt(0).toLocaleUpperCase('pt-BR') + normalizada.slice(1)
+}
+
 function nomeExibicao(nome?: string | null) {
-  return (nome || 'Avaliador')
+  const partes = (nome || 'Avaliador')
     .trim()
     .split(/\s+/)
-    .map((parte, index) => {
-      const normalizada = parte.toLocaleLowerCase('pt-BR')
-      if (index > 0 && ['da', 'de', 'di', 'do', 'das', 'dos'].includes(normalizada)) return normalizada
-      return normalizada.charAt(0).toLocaleUpperCase('pt-BR') + normalizada.slice(1)
-    })
-    .join(' ')
+    .filter(Boolean)
+  if (partes.length === 0) return 'Avaliador'
+
+  const primeiro = capitalizarNome(partes[0])
+  const segundo = partes[1]?.toLocaleLowerCase('pt-BR')
+  if (segundo && SEGUNDOS_NOMES_COMPOSTOS.has(segundo)) {
+    return `${primeiro} ${capitalizarNome(partes[1])}`
+  }
+
+  return primeiro
 }
 
 function sortearFraseMotivacional(avaliadorId?: string) {
@@ -214,8 +252,8 @@ export default function DashboardPage() {
                 <br />
                 Sua operação de campo está pronta.
               </h2>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-blue-50/85">
-                {fraseMotivacional}
+              <p className="mt-4 max-w-2xl text-base font-bold italic leading-7 text-blue-50/90">
+                “{fraseMotivacional}”
               </p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                 <button
