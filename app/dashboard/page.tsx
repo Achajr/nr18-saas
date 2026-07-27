@@ -46,11 +46,49 @@ interface Vistoria {
   obra: { name: string; empresa_cliente: { name: string } | null } | null
 }
 
+const FRASES_MOTIVACIONAIS = [
+  'Cada vistoria bem feita protege vidas e fortalece a segurança no canteiro.',
+  'Seu olhar técnico transforma prevenção em cuidado real para todos.',
+  'Hoje é mais um dia para construir segurança com precisão e responsabilidade.',
+  'A excelência em campo começa na atenção aos detalhes.',
+  'Cada não conformidade identificada é uma oportunidade de evitar acidentes.',
+  'Seu trabalho ajuda a obra a avançar com mais segurança, ordem e confiança.',
+  'Prevenir é construir o futuro com responsabilidade.',
+  'A segurança do trabalho começa com uma vistoria feita com critério.',
+  'Seu compromisso em campo faz diferença na vida de cada trabalhador.',
+  'Boas decisões técnicas hoje evitam riscos amanhã.',
+]
+
+function nomeExibicao(nome?: string | null) {
+  return (nome || 'Avaliador')
+    .trim()
+    .split(/\s+/)
+    .map((parte, index) => {
+      const normalizada = parte.toLocaleLowerCase('pt-BR')
+      if (index > 0 && ['da', 'de', 'di', 'do', 'das', 'dos'].includes(normalizada)) return normalizada
+      return normalizada.charAt(0).toLocaleUpperCase('pt-BR') + normalizada.slice(1)
+    })
+    .join(' ')
+}
+
+function sortearFraseMotivacional(avaliadorId?: string) {
+  if (typeof window === 'undefined') return FRASES_MOTIVACIONAIS[0]
+
+  const sessionKey = `nr18-mensagem-login:${avaliadorId || 'avaliador'}`
+  const salva = window.sessionStorage.getItem(sessionKey)
+  if (salva) return salva
+
+  const frase = FRASES_MOTIVACIONAIS[Math.floor(Math.random() * FRASES_MOTIVACIONAIS.length)]
+  window.sessionStorage.setItem(sessionKey, frase)
+  return frase
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const [avaliador, setAvaliador] = useState<Avaliador | null>(null)
   const [stats, setStats] = useState<Stats | null>(null)
   const [vistorias, setVistorias] = useState<Vistoria[]>([])
+  const [fraseMotivacional, setFraseMotivacional] = useState(FRASES_MOTIVACIONAIS[0])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { loadData() }, [])
@@ -61,6 +99,7 @@ export default function DashboardPage() {
       if (!res.ok) { router.push('/auth/login'); return }
       const data = await res.json()
       setAvaliador(data.avaliador)
+      setFraseMotivacional(sortearFraseMotivacional(data.avaliador?.id))
       setStats(data.stats)
       setVistorias(data.vistorias || [])
     } catch (err) {
@@ -71,6 +110,7 @@ export default function DashboardPage() {
   }
 
   async function handleLogout() {
+    if (avaliador?.id) window.sessionStorage.removeItem(`nr18-mensagem-login:${avaliador.id}`)
     await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -106,7 +146,7 @@ export default function DashboardPage() {
     )
   }
 
-  const primeiroNome = avaliador?.full_name?.split(' ')[0] || 'Avaliador'
+  const nomeAvaliador = nomeExibicao(avaliador?.full_name)
   const dataHoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
@@ -170,10 +210,12 @@ export default function DashboardPage() {
                 {dataHoje}
               </div>
               <h2 className="text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
-                Olá, {primeiroNome}. Sua operação de campo está pronta.
+                Olá, {nomeAvaliador}.
+                <br />
+                Sua operação de campo está pronta.
               </h2>
               <p className="mt-4 max-w-2xl text-base leading-7 text-blue-50/85">
-                Inicie uma vistoria, acompanhe conformidade e mantenha o histórico técnico da consultoria em ordem.
+                {fraseMotivacional}
               </p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                 <button
