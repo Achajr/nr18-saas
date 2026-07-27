@@ -30,6 +30,7 @@ Texto original do avaliador:
 Regras:
 - Mantenha apenas os fatos descritos pelo avaliador.
 - Use terceira pessoa, como "Constatou-se", "Verificou-se" ou "Foi identificado".
+- Antes de responder, revise ortografia, acentuação, pontuação, concordância e gramática para não haver erros de português.
 - Máximo de 4 linhas.
 - Sem markdown, sem asteriscos e sem bullet points.
 - Cite o item da NR-18 (${item_codigo}).
@@ -64,6 +65,7 @@ O parecer deve:
 - Usar sempre PGR, nunca PCMAT.
 - Usar linguagem técnica formal em terceira pessoa.
 - Manter o texto proporcional ao tamanho do relatório, com objetividade.
+- Antes de responder, revise ortografia, acentuação, pontuação, concordância e gramática para não haver erros de português.
 
 Responda apenas com o texto do parecer.`,
       })
