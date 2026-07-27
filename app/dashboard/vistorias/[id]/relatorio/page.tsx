@@ -443,7 +443,7 @@ export default function RelatorioPage() {
           body: JSON.stringify({ parecer_ia: json.observacao }),
         })
       }
-    } catch { toast.error('Erro ao gerar parecer') }
+    } catch { toast.error('Erro ao gerar parecer com Gemini') }
     finally { setGerandoIA(false) }
   }
 
@@ -1225,14 +1225,14 @@ export default function RelatorioPage() {
                 <button onClick={() => gerarParecerIA()} disabled={gerandoIA}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--brand)]/20 hover:bg-[var(--brand)]/30 border border-[var(--brand)]/40 text-[var(--brand)] text-xs font-medium rounded-xl transition">
                   {gerandoIA ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                  {gerandoIA ? 'Gerando...' : 'Reescrever com IA'}
+                  {gerandoIA ? 'Gerando...' : 'Gerar parecer'}
                 </button>
               </div>
             </div>
             {gerandoIA && !parecer ? (
               <div className="bg-[var(--bg-primary)] rounded-xl p-6 text-center">
                 <Loader2 size={24} className="animate-spin text-[var(--brand)] mx-auto mb-2" />
-                <p className="text-xs text-[var(--text-muted)]">Gerando parecer técnico com IA...</p>
+                <p className="text-xs text-[var(--text-muted)]">Gerando parecer técnico com Gemini...</p>
               </div>
             ) : (
               <textarea

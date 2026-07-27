@@ -570,8 +570,8 @@ export default function ChecklistPage() {
         }),
       })
       const json = await res.json()
-      if (json.observacao) { setObservacao(item_id, json.observacao); toast.success('Reescrito com IA!') }
-    } catch { toast.error('Erro ao chamar IA') }
+      if (json.observacao) { setObservacao(item_id, json.observacao); toast.success('Texto reescrito!') }
+    } catch { toast.error('Erro ao reescrever texto') }
     finally { setItens(prev => ({ ...prev, [item_id]: { ...prev[item_id], gerando_ia: false } })) }
   }
 
@@ -888,12 +888,12 @@ export default function ChecklistPage() {
                                   type="button"
                                   onClick={() => gerarObservacaoIA(item.id)}
                                   disabled={it.gerando_ia}
-                                  title="Reescrever com IA"
-                                  aria-label="Reescrever observação com IA"
+                                  title="Reescrever texto"
+                                  aria-label="Reescrever texto"
                                   className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[var(--brand)]/25 bg-white px-3 py-1.5 text-xs font-semibold text-[var(--brand)] shadow-sm transition hover:border-[var(--brand)]/45 hover:bg-[var(--brand)]/10 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                   {it.gerando_ia ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                                  <span>Reescrever IA</span>
+                                  <span>Reescrever Texto</span>
                                 </button>
                               </div>
                             </div>

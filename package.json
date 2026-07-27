@@ -10,7 +10,6 @@
     "create-access": "node scripts/create-access.mjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.100.1",
     "@hookform/resolvers": "^5.4.0",
     "@prisma/client": "^6.19.3",
     "@react-pdf/renderer": "^4.5.1",
