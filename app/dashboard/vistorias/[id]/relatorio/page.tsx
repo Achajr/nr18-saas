@@ -186,6 +186,13 @@ function prioridadePorNivel(nivel?: string | null) {
   return 'Baixa'
 }
 
+function riscoPorNivel(nivel?: string | null) {
+  if (nivel === 'grave') return 'crítico'
+  if (nivel === 'alto') return 'alto'
+  if (nivel === 'medio') return 'médio'
+  return 'baixo'
+}
+
 function corPorIndice(indice: number) {
   if (indice >= 90) return PDF.green
   if (indice >= 70) return PDF.amber
@@ -407,11 +414,11 @@ export default function RelatorioPage() {
     setBlocoStats(stats)
   }
 
-  async function gerarParecerIA(v?: any, itens?: ItemVistoria[], empresa?: EmpresaOpcao, modelo?: ChecklistBloco[]) {
+  async function gerarParecerIA(v?: any, itens?: ItemVistoria[], empresa?: EmpresaOpcao, modelo?: ChecklistBloco[]): Promise<string | null> {
     const vData = v || vistoria
     const itensData = itens || todosItens
     const empData = empresa || empresaSelecionada
-    if (!vData || !empData) return
+    if (!vData || !empData) return null
     setGerandoIA(true)
     try {
       const ncsEmp = itensData.filter(it => {
@@ -440,6 +447,7 @@ export default function RelatorioPage() {
         }),
       })
       const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao gerar parecer com Gemini')
       if (json.observacao) {
         setParecer(json.observacao)
         setParecerEditado(false)
@@ -449,8 +457,13 @@ export default function RelatorioPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ parecer_ia: json.observacao }),
         })
+        return json.observacao
       }
-    } catch { toast.error('Erro ao gerar parecer com Gemini') }
+      return null
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao gerar parecer com Gemini')
+      return null
+    }
     finally { setGerandoIA(false) }
   }
 
@@ -469,10 +482,60 @@ export default function RelatorioPage() {
     finally { setSalvandoParecer(false) }
   }
 
+  function montarParecerTecnicoPadrao() {
+    if (!vistoria || !empresaSelecionada) return ''
+    const ncs = filtrarNcsPorEmpresa(empresaSelecionada)
+    const dataVistoria = dataBR(vistoria.data_vistoria)
+    const classificacao = textoTecnico(vistoria.classificacao || '').toLowerCase() || 'não informada'
+    const indiceFormatado = `${vistoria.indice_conformidade || 0}%`
+    const obra = vistoria.obra?.name || 'obra vistoriada'
+    const empresa = empresaSelecionada.label
+    const itensCriticos = ncs
+      .map(nc => findChecklistItem(checklist, nc.item_id) || null)
+      .filter((item): item is ChecklistItem => Boolean(item))
+      .filter(item => item.nivel === 'grave' || item.nivel === 'alto')
+      .slice(0, 4)
+      .map(item => `${item.ref} (${riscoPorNivel(item.nivel)})`)
+
+    const abertura = `A vistoria técnica de segurança do trabalho realizada em ${dataVistoria}, na obra ${obra}, para a empresa ${empresa}, teve como objetivo verificar a aderência dos itens avaliados aos requisitos aplicáveis da NR-18 e registrar as condições observadas no momento da inspeção.`
+    const resultado = `Com base nos dados consolidados no sistema, o índice de conformidade apurado foi de ${indiceFormatado}, com classificação ${classificacao}. Esse resultado deve orientar a priorização das medidas corretivas, especialmente nos itens classificados com maior criticidade.`
+
+    if (ncs.length === 0) {
+      return [
+        abertura,
+        resultado,
+        'Não foram registradas não conformidades para a empresa selecionada dentro do escopo avaliado neste relatório. Recomenda-se manter a rotina de inspeções, evidências documentais, treinamentos e controles preventivos para preservar o nível de conformidade identificado.',
+        'Conclui-se que, no escopo desta vistoria, as condições registradas devem ser acompanhadas continuamente pela gestão da obra, com atualização das evidências e reavaliação periódica sempre que houver mudança de etapa, equipe, processo executivo ou condição de risco.',
+      ].join('\n\n')
+    }
+
+    const foco = itensCriticos.length > 0
+      ? `Entre os pontos que exigem maior atenção estão os itens ${itensCriticos.join(', ')}, além das demais não conformidades descritas no relatório.`
+      : 'As não conformidades registradas devem ser tratadas conforme sua criticidade, prazo de correção e impacto sobre a segurança dos trabalhadores.'
+
+    return [
+      abertura,
+      resultado,
+      `Foram registradas ${ncs.length} não conformidade(s) para a empresa selecionada. ${foco}`,
+      'Recomenda-se a correção das não conformidades com definição de responsáveis, prazos, evidências fotográficas/documentais e reavaliação posterior da eficácia das medidas adotadas, observando a hierarquia de controles, as proteções coletivas, os EPIs aplicáveis e os documentos exigíveis.',
+      'Conclui-se que o relatório deve ser utilizado como instrumento técnico de acompanhamento e tomada de decisão, sem substituir a responsabilidade da gestão da obra pela implementação, comprovação e manutenção das medidas de segurança necessárias.',
+    ].join('\n\n')
+  }
+
   async function exportarPDF() {
     if (!vistoria || !empresaSelecionada) return
     setGerando(true)
     try {
+      let parecerPdf = parecer.trim()
+      if (!parecerPdf) {
+        toast.loading('Gerando parecer técnico...', { id: 'parecer-pdf' })
+        const parecerGerado = await gerarParecerIA()
+        parecerPdf = parecerGerado?.trim() || montarParecerTecnicoPadrao()
+        setParecer(parecerPdf)
+        setParecerEditado(false)
+        toast.dismiss('parecer-pdf')
+      }
+
       const vistoriaPdf = vistoria
       const [{ jsPDF }, autoTableModule] = await Promise.all([
         import('jspdf'),
@@ -909,7 +972,7 @@ export default function RelatorioPage() {
       }
 
       sectionTitle('Parecer Técnico Conclusivo')
-      paragraph(parecer || 'Parecer técnico não informado.', margin, contentW, 9, 4.6)
+      paragraph(parecerPdf || 'Parecer técnico indisponível no momento da emissão.', margin, contentW, 9, 4.6)
 
       ensure(95)
       sectionTitle('Responsabilidade Técnica e Encerramento')
@@ -1063,8 +1126,8 @@ export default function RelatorioPage() {
                 )}
               </div>
             )}
-            <button onClick={exportarPDF} disabled={gerando} className="flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white text-sm font-medium rounded-xl transition">
-              {gerando ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} PDF
+            <button onClick={exportarPDF} disabled={gerando || gerandoIA} className="flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white text-sm font-medium rounded-xl transition disabled:opacity-60 disabled:cursor-not-allowed">
+              {gerando || gerandoIA ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} PDF
             </button>
           </div>
         </header>

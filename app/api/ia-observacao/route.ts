@@ -62,6 +62,10 @@ O parecer deve:
 - Parágrafo 3: principais não conformidades encontradas, citando itens da NR-18 e níveis de risco.
 - Parágrafo 4: recomendações objetivas, priorizando as não conformidades graves e prazos sugeridos.
 - Parágrafo 5: conclusão com posicionamento técnico do responsável.
+- Use somente os dados fornecidos no contexto. Não invente fatos, datas, itens, responsáveis, fotos, medidas já executadas nem informações jurídicas.
+- Se não houver não conformidades no contexto, declare que não foram registradas NCs no escopo avaliado e recomende manutenção dos controles preventivos.
+- Não cite item da NR-18 que não esteja informado no contexto.
+- Não emita juízo jurídico definitivo; escreva como parecer técnico de vistoria e acompanhamento.
 - Usar sempre PGR, nunca PCMAT.
 - Usar linguagem técnica formal em terceira pessoa.
 - Manter o texto proporcional ao tamanho do relatório, com objetividade.

@@ -12,6 +12,7 @@ export type EtapaObra =
   | 'estrutura'
   | 'acabamento'
   | 'cobertura'
+  | 'maquinas_equipamentos'
   | 'movimentacao_cargas'
   | 'trabalho_altura'
   | 'todas'
@@ -150,7 +151,10 @@ const TEXTO_TECNICO_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bresiduos\b/g, 'resíduos'],
   [/\bvergalhoes\b/g, 'vergalhões'],
   [/\bsequencia\b/g, 'sequência'],
+  [/\bSinalizacao\b/g, 'Sinalização'],
   [/\bsinalizacao\b/g, 'sinalização'],
+  [/\bDisposicoes\b/g, 'Disposições'],
+  [/\bdisposicoes\b/g, 'disposições'],
   [/\bpecas\b/g, 'peças'],
   [/\boperacao\b/g, 'operação'],
   [/\bresistencia\b/g, 'resistência'],
@@ -209,13 +213,19 @@ const TEXTO_TECNICO_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bMaquinas\b/g, 'Máquinas'],
   [/\bmaquinas\b/g, 'máquinas'],
   [/\brecomendacoes\b/g, 'recomendações'],
+  [/\biluminacao\b/g, 'iluminação'],
+  [/\bdiaria\b/g, 'diária'],
   [/\bdiarias\b/g, 'diárias'],
+  [/\bmetalica\b/g, 'metálica'],
+  [/\bestavel\b/g, 'estável'],
+  [/\blampadas\b/g, 'lâmpadas'],
+  [/\bimpeca\b/g, 'impeça'],
+  [/\bprojecao\b/g, 'projeção'],
   [/\banemometro\b/g, 'anemômetro'],
   [/\bobstaculo\b/g, 'obstáculo'],
   [/\bautomatico\b/g, 'automático'],
   [/\bpermissao\b/g, 'permissão'],
   [/\bdirecao\b/g, 'direção'],
-  [/\bprojecao\b/g, 'projeção'],
   [/\bpratica\b/g, 'prática'],
   [/\bestagio\b/g, 'estágio'],
   [/\bperiodico\b/g, 'periódico'],
@@ -248,6 +258,12 @@ const TEXTO_TECNICO_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bmedio-fio\b/g, 'meio-fio'],
   [/\badocao\b/g, 'adoção'],
   [/\banti-deslocamento\b/g, 'antideslocamento'],
+  [/\bmin 0,8m\b/g, 'mín. 0,80 m'],
+  [/\bmax 0,2m\b/g, 'máx. 0,20 m'],
+  [/\ba cada 2,9m\b/g, 'a cada 2,90 m'],
+  [/\b0,8m\b/g, '0,80 m'],
+  [/\b0,2m\b/g, '0,20 m'],
+  [/\b2,9m\b/g, '2,90 m'],
 ]
 
 export function corrigirTextoTecnico(value?: string | null) {
@@ -271,6 +287,7 @@ export const ETAPA_LABEL: Record<EtapaObra, string> = {
   estrutura: 'Estrutura e concretagem',
   acabamento: 'Acabamento e serviços gerais',
   cobertura: 'Cobertura e impermeabilização',
+  maquinas_equipamentos: 'Máquinas, equipamentos e ferramentas',
   movimentacao_cargas: 'Movimentação de cargas',
   trabalho_altura: 'Trabalho em altura',
   todas: 'Todas as etapas',
@@ -300,7 +317,8 @@ function inferirEtapa(item: ChecklistItem): EtapaObra {
   if (item.ref.startsWith('18.7.1') || item.ref.startsWith('18.7.2')) return 'fundacao'
   if (item.ref.startsWith('18.7.3') || item.ref.startsWith('18.7.4')) return 'estrutura'
   if (item.ref.startsWith('18.7.7') || item.ref.startsWith('18.7.8')) return 'cobertura'
-  if (item.ref.startsWith('18.10') || item.ref.startsWith('18.11')) return 'movimentacao_cargas'
+  if (item.ref.startsWith('18.10')) return 'maquinas_equipamentos'
+  if (item.ref.startsWith('18.11')) return 'movimentacao_cargas'
   if (item.ref.startsWith('18.8') || item.ref.startsWith('18.9') || item.ref.startsWith('18.12')) return 'trabalho_altura'
   return 'todas'
 }
